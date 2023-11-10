@@ -1,0 +1,22 @@
+cc_binary(
+    name = "publisher",
+    srcs = ["publisher.cpp"],
+    deps = [
+        ":topic_data",
+        "//iceoryx_posh",
+    ],
+)
+
+cc_binary(
+    name = "subscriber",
+    srcs = ["subscriber.cpp"],
+    deps = [
+        ":topic_data",
+        "//iceoryx_posh",
+    ],
+)
+
+cc_library(
+    name = "topic_data",
+    hdrs = ["topic_data.hpp"],
+)
