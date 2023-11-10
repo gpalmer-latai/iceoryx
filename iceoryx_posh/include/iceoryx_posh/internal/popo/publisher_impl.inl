@@ -35,6 +35,13 @@ inline PublisherImpl<T, H, BasePublisherType>::PublisherImpl(const capro::Servic
 }
 
 template <typename T, typename H, typename BasePublisherType>
+inline mepoo::MemPoolInfo PublisherImpl<T, H, BasePublisherType>::getMemPoolInfo() const noexcept
+{
+    static constexpr uint32_t USER_HEADER_SIZE{std::is_same<H, mepoo::NoUserHeader>::value ? 0U : sizeof(H)};
+    return port().getMemPoolInfo(sizeof(T), alignof(T), USER_HEADER_SIZE, alignof(H));
+}
+
+template <typename T, typename H, typename BasePublisherType>
 template <typename... Args>
 inline expected<Sample<T, H>, AllocationError> PublisherImpl<T, H, BasePublisherType>::loan(Args&&... args) noexcept
 {

@@ -83,9 +83,19 @@ MemPoolInfo MemoryManager::getMemPoolInfo(const uint32_t index) const noexcept
 {
     if (index >= m_memPoolVector.size())
     {
-        return {0, 0, 0, 0};
+        return {0, 0, 0, 0, {}};
     }
     return m_memPoolVector[index].getInfo();
+}
+
+MemPoolInfo MemoryManager::getMemPoolInfo(const ChunkSettings& chunkSettings) const noexcept
+{
+    auto maybe_mempool = getMatchingMemPool(chunkSettings);
+    if (maybe_mempool.has_error())
+    {
+        return {0, 0, 0, 0, {}};
+    }
+    return maybe_mempool.value()->getInfo();
 }
 
 uint32_t MemoryManager::sizeWithChunkHeaderStruct(const MaxChunkPayloadSize_t size) noexcept
@@ -143,26 +153,8 @@ void MemoryManager::configureMemoryManager(const MePooConfig& mePooConfig,
     generateChunkManagementPool(managementAllocator);
 }
 
-expected<SharedChunk, MemoryManager::Error> MemoryManager::getChunk(const ChunkSettings& chunkSettings) noexcept
+expected<MemPool*, MemoryManager::Error> MemoryManager::getMatchingMemPool(const ChunkSettings& chunkSettings) const noexcept
 {
-    void* chunk{nullptr};
-    MemPool* memPoolPointer{nullptr};
-    const auto requiredChunkSize = chunkSettings.requiredChunkSize();
-
-    uint32_t aquiredChunkSize = 0U;
-
-    for (auto& memPool : m_memPoolVector)
-    {
-        uint32_t chunkSizeOfMemPool = memPool.getChunkSize();
-        if (chunkSizeOfMemPool >= requiredChunkSize)
-        {
-            chunk = memPool.getChunk();
-            memPoolPointer = &memPool;
-            aquiredChunkSize = chunkSizeOfMemPool;
-            break;
-        }
-    }
-
     if (m_memPoolVector.size() == 0)
     {
         IOX_LOG(FATAL, "There are no mempools available!");
@@ -170,20 +162,42 @@ expected<SharedChunk, MemoryManager::Error> MemoryManager::getChunk(const ChunkS
         errorHandler(iox::PoshError::MEPOO__MEMPOOL_GETCHUNK_CHUNK_WITHOUT_MEMPOOL, ErrorLevel::SEVERE);
         return err(Error::NO_MEMPOOLS_AVAILABLE);
     }
-    else if (memPoolPointer == nullptr)
-    {
-        IOX_LOG(
-            FATAL,
-            "The following mempools are available:" << [this](auto& log) -> auto& {
-                this->printMemPoolVector(log);
-                return log;
-            } << "Could not find a fitting mempool for a chunk of size "
-              << requiredChunkSize);
 
-        errorHandler(iox::PoshError::MEPOO__MEMPOOL_GETCHUNK_CHUNK_IS_TOO_LARGE, ErrorLevel::SEVERE);
-        return err(Error::NO_MEMPOOL_FOR_REQUESTED_CHUNK_SIZE);
+    const auto requiredChunkSize = chunkSettings.requiredChunkSize();
+
+    for (auto& memPool : m_memPoolVector)
+    {
+        uint32_t chunkSizeOfMemPool = memPool.getChunkSize();
+        if (chunkSizeOfMemPool >= requiredChunkSize)
+        {
+            return ok(const_cast<MemPool*>(&memPool));
+        }
     }
-    else if (chunk == nullptr)
+
+    IOX_LOG(
+        FATAL,
+        "The following mempools are available:" << [this](auto& log) -> auto& {
+            this->printMemPoolVector(log);
+            return log;
+        } << "Could not find a fitting mempool for a chunk of size "
+            << requiredChunkSize);
+
+    errorHandler(iox::PoshError::MEPOO__MEMPOOL_GETCHUNK_CHUNK_IS_TOO_LARGE, ErrorLevel::SEVERE);
+    return err(Error::NO_MEMPOOL_FOR_REQUESTED_CHUNK_SIZE);
+}
+
+expected<SharedChunk, MemoryManager::Error> MemoryManager::getChunk(const ChunkSettings& chunkSettings) noexcept
+{
+    auto maybeMemPoolPointer = getMatchingMemPool(chunkSettings);
+    if (maybeMemPoolPointer.has_error())
+    {
+        return err(maybeMemPoolPointer.error());
+    }
+    MemPool* memPoolPointer = std::move(maybeMemPoolPointer).value();
+    void* chunk = memPoolPointer->getChunk();
+    uint32_t aquiredChunkSize = memPoolPointer->getChunkSize();
+
+    if (chunk == nullptr)
     {
         IOX_LOG(
             ERROR,
@@ -197,13 +211,11 @@ expected<SharedChunk, MemoryManager::Error> MemoryManager::getChunk(const ChunkS
         errorHandler(iox::PoshError::MEPOO__MEMPOOL_GETCHUNK_POOL_IS_RUNNING_OUT_OF_CHUNKS, ErrorLevel::MODERATE);
         return err(Error::MEMPOOL_OUT_OF_CHUNKS);
     }
-    else
-    {
-        auto chunkHeader = new (chunk) ChunkHeader(aquiredChunkSize, chunkSettings);
-        auto chunkManagement = new (m_chunkManagementPool.front().getChunk())
-            ChunkManagement(chunkHeader, memPoolPointer, &m_chunkManagementPool.front());
-        return ok(SharedChunk(chunkManagement));
-    }
+
+    auto chunkHeader = new (chunk) ChunkHeader(aquiredChunkSize, chunkSettings);
+    auto chunkManagement = new (m_chunkManagementPool.front().getChunk())
+    ChunkManagement(chunkHeader, memPoolPointer, &m_chunkManagementPool.front());
+    return ok(SharedChunk(chunkManagement));
 }
 
 std::ostream& operator<<(std::ostream& stream, const MemoryManager::Error value) noexcept

@@ -67,6 +67,7 @@ class MemoryManager
                                 BumpAllocator& managementAllocator,
                                 BumpAllocator& chunkMemoryAllocator) noexcept;
 
+
     /// @brief Obtains a chunk from the mempools
     /// @param[in] chunkSettings for the requested chunk
     /// @return a SharedChunk if successful, otherwise a MemoryManager::Error
@@ -75,6 +76,7 @@ class MemoryManager
     uint32_t getNumberOfMemPools() const noexcept;
 
     MemPoolInfo getMemPoolInfo(const uint32_t index) const noexcept;
+    MemPoolInfo getMemPoolInfo(const ChunkSettings& chunkSettings) const noexcept;
 
     static uint64_t requiredChunkMemorySize(const MePooConfig& mePooConfig) noexcept;
     static uint64_t requiredManagementMemorySize(const MePooConfig& mePooConfig) noexcept;
@@ -89,6 +91,7 @@ class MemoryManager
                     const greater_or_equal<uint32_t, MemPool::CHUNK_MEMORY_ALIGNMENT> chunkPayloadSize,
                     const greater_or_equal<uint32_t, 1> numberOfChunks) noexcept;
     void generateChunkManagementPool(BumpAllocator& managementAllocator) noexcept;
+    expected<MemPool*, Error> getMatchingMemPool(const ChunkSettings& chunkSettings) const noexcept;
 
   private:
     bool m_denyAddMemPool{false};

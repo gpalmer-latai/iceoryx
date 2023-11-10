@@ -36,12 +36,14 @@ struct MemPoolInfo
     MemPoolInfo(const uint32_t usedChunks,
                 const uint32_t minFreeChunks,
                 const uint32_t numChunks,
-                const uint32_t chunkSize) noexcept;
+                const uint32_t chunkSize,
+                const UntypedRelativePointer basePtr) noexcept;
 
     uint32_t m_usedChunks{0};
     uint32_t m_minFreeChunks{0};
     uint32_t m_numChunks{0};
     uint32_t m_chunkSize{0};
+    UntypedRelativePointer m_basePtr{};
 };
 
 class MemPool

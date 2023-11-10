@@ -28,11 +28,13 @@ namespace mepoo
 MemPoolInfo::MemPoolInfo(const uint32_t usedChunks,
                          const uint32_t minFreeChunks,
                          const uint32_t numChunks,
-                         const uint32_t chunkSize) noexcept
+                         const uint32_t chunkSize,
+                         const UntypedRelativePointer basePtr) noexcept
     : m_usedChunks(usedChunks)
     , m_minFreeChunks(minFreeChunks)
     , m_numChunks(numChunks)
     , m_chunkSize(chunkSize)
+    , m_basePtr(basePtr)
 {
 }
 
@@ -143,7 +145,8 @@ MemPoolInfo MemPool::getInfo() const noexcept
     return {m_usedChunks.load(std::memory_order_relaxed),
             m_minFree.load(std::memory_order_relaxed),
             m_numberOfChunks,
-            m_chunkSize};
+            m_chunkSize,
+            UntypedRelativePointer(static_cast<void*>(m_rawMemory.getBasePtr()))};
 }
 
 } // namespace mepoo

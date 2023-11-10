@@ -47,6 +47,11 @@ class PublisherPortUser : public BasePort
     PublisherPortUser& operator=(PublisherPortUser&& rhs) noexcept = default;
     ~PublisherPortUser() = default;
 
+    mepoo::MemPoolInfo getMemPoolInfo(const uint32_t userPayloadSize,
+                                      const uint32_t userPayloadAlignment,
+                                      const uint32_t userHeaderSize = 0U,
+                                      const uint32_t userHeaderAlignment = 1U) const noexcept;
+
     /// @brief Allocate a chunk, the ownership of the SharedChunk remains in the PublisherPortUser for being able to
     /// cleanup if the user process disappears
     /// @param[in] userPayloadSize, size of the user-payload without additional headers

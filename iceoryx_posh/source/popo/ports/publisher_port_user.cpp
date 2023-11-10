@@ -38,6 +38,20 @@ PublisherPortUser::MemberType_t* PublisherPortUser::getMembers() noexcept
     return reinterpret_cast<MemberType_t*>(BasePort::getMembers());
 }
 
+mepoo::MemPoolInfo PublisherPortUser::getMemPoolInfo(const uint32_t userPayloadSize,
+                                                    const uint32_t userPayloadAlignment,
+                                                    const uint32_t userHeaderSize,
+                                                    const uint32_t userHeaderAlignment) const noexcept
+{
+    const auto chunkSettingsResult =
+        mepoo::ChunkSettings::create(userPayloadSize, userPayloadAlignment, userHeaderSize, userHeaderAlignment);
+    if (chunkSettingsResult.has_error())
+    {
+        return {0, 0, 0, 0, {}};
+    }
+    return getMembers()->m_chunkSenderData.m_memoryMgr->getMemPoolInfo(chunkSettingsResult.value());
+}
+
 expected<mepoo::ChunkHeader*, AllocationError>
 PublisherPortUser::tryAllocateChunk(const uint32_t userPayloadSize,
                                     const uint32_t userPayloadAlignment,

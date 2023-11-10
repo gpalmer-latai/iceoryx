@@ -45,6 +45,7 @@ class PublisherImpl : public BasePublisherType, private PublisherInterface<T, H>
     PublisherImpl& operator=(PublisherImpl&& rhs) = delete;
     virtual ~PublisherImpl() = default;
 
+    mepoo::MemPoolInfo getMemPoolInfo() const noexcept;
     ///
     /// @brief loan Get a sample from loaned shared memory and consctruct the data with the given arguments.
     /// @param args Arguments used to construct the data.

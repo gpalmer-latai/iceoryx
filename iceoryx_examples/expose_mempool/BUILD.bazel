@@ -1,0 +1,23 @@
+sh_binary(
+    name = "roudi_with_pinned_pool",
+    srcs = ["roudi_with_pinned_pool.sh"],
+    data = [
+        "//:roudi",
+        "resources/pinned_pool_roudi_config.toml",
+    ],
+    deps = ["@bazel_tools//tools/bash/runfiles"],
+)
+
+cc_library(
+    name = "image",
+    hdrs = ["image.hh"],
+)
+
+cc_binary(
+    name = "gpu_publisher",
+    srcs = ["gpu_publisher.cc"],
+    deps = [
+        ":image",
+        "//iceoryx_posh",
+    ],
+)
