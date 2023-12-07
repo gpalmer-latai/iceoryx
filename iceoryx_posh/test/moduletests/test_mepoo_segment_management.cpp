@@ -68,16 +68,16 @@ class SegmentManager_test : public Test
     SegmentConfig getSegmentConfig()
     {
         SegmentConfig config;
-        config.m_sharedMemorySegments.push_back({"iox_roudi_test1", "iox_roudi_test2", mepooConfig});
-        config.m_sharedMemorySegments.push_back({"iox_roudi_test2", "iox_roudi_test3", mepooConfig});
+        config.m_sharedMemorySegments.emplace_back("iox_roudi_test1", "iox_roudi_test1", "iox_roudi_test2", mepooConfig, memoryInfo);
+        config.m_sharedMemorySegments.emplace_back("iox_roudi_test2", "iox_roudi_test2", "iox_roudi_test3", mepooConfig, memoryInfo);
         return config;
     }
 
     SegmentConfig getInvalidSegmentConfig()
     {
         SegmentConfig config;
-        config.m_sharedMemorySegments.push_back({"iox_roudi_test1", "iox_roudi_test1", mepooConfig});
-        config.m_sharedMemorySegments.push_back({"iox_roudi_test3", "iox_roudi_test1", mepooConfig});
+        config.m_sharedMemorySegments.emplace_back("iox_roudi_test1", "iox_roudi_test1", "iox_roudi_test1", mepooConfig, memoryInfo);
+        config.m_sharedMemorySegments.emplace_back("iox_roudi_test1", "iox_roudi_test3", "iox_roudi_test1", mepooConfig, memoryInfo);
         return config;
     }
 
@@ -86,7 +86,7 @@ class SegmentManager_test : public Test
         SegmentConfig config;
         for (uint64_t i = 0U; i < iox::MAX_SHM_SEGMENTS; ++i)
         {
-            config.m_sharedMemorySegments.push_back({"iox_roudi_test1", "iox_roudi_test1", mepooConfig});
+            config.m_sharedMemorySegments.emplace_back("iox_roudi_test1", "iox_roudi_test1", "iox_roudi_test1", mepooConfig, memoryInfo);
         }
         return config;
     }
@@ -95,6 +95,7 @@ class SegmentManager_test : public Test
     char memory[MEM_SIZE];
     iox::BumpAllocator allocator{memory, MEM_SIZE};
     MePooConfig mepooConfig = getMempoolConfig();
+    MemoryInfo memoryInfo{};
     SegmentConfig segmentConfig = getSegmentConfig();
 
     using SUT = SegmentManager<>;

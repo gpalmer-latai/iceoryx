@@ -246,10 +246,11 @@ TEST_F(IceoryxRoudiApp_test, VerifyConstructorUsingConfigWithSegmentWithoutMemPo
 
     iox::mepoo::MePooConfig mempoolConfig;
     auto currentGroup = PosixGroup::getGroupOfCurrentProcess();
+    iox::mepoo::MemoryInfo memoryInfo{};
 
     iox::RouDiConfig_t roudiConfig;
 
-    roudiConfig.m_sharedMemorySegments.push_back({currentGroup.getName(), currentGroup.getName(), mempoolConfig});
+    roudiConfig.m_sharedMemorySegments.emplace_back(currentGroup.getName(), currentGroup.getName(), currentGroup.getName(), mempoolConfig, memoryInfo);
 
     IceoryxRoudiApp_Child roudi(cmdLineArgs.value(), roudiConfig);
 

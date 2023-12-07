@@ -24,7 +24,7 @@ namespace mepoo
 SegmentConfig& SegmentConfig::setDefaults() noexcept
 {
     auto groupName = PosixGroup::getGroupOfCurrentProcess().getName();
-    m_sharedMemorySegments.push_back({groupName, groupName, MePooConfig().setDefaults()});
+    m_sharedMemorySegments.emplace_back(groupName, groupName, groupName, MePooConfig().setDefaults(), MemoryInfo{});
     return *this;
 }
 

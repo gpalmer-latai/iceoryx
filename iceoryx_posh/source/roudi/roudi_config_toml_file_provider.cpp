@@ -128,8 +128,12 @@ TomlRouDiConfigFileProvider::parse(std::istream& stream) noexcept
     iox::RouDiConfig_t parsedConfig;
     for (auto segment : *segments)
     {
+        auto name = segment->get_as<std::string>("name").value_or(into<std::string>(groupOfCurrentProcess));
         auto writer = segment->get_as<std::string>("writer").value_or(into<std::string>(groupOfCurrentProcess));
         auto reader = segment->get_as<std::string>("reader").value_or(into<std::string>(groupOfCurrentProcess));
+        auto deviceId = segment->get_as<uint32_t>("deviceId").value_or(0U);
+        auto memoryType = segment->get_as<uint32_t>("memoryType").value_or(0U);
+        iox::mepoo::MemoryInfo memoryInfo{deviceId, memoryType};
         iox::mepoo::MePooConfig mempoolConfig;
         auto mempools = segment->get_table_array("mempool");
         if (!mempools)
@@ -156,10 +160,12 @@ TomlRouDiConfigFileProvider::parse(std::istream& stream) noexcept
             }
             mempoolConfig.addMemPool({*chunkSize, *chunkCount});
         }
-        parsedConfig.m_sharedMemorySegments.push_back(
-            {PosixGroup::groupName_t(iox::TruncateToCapacity, reader.c_str(), reader.size()),
+        parsedConfig.m_sharedMemorySegments.emplace_back(
+             ShmName_t(iox::TruncateToCapacity, name.c_str(), name.size()),
+             PosixGroup::groupName_t(iox::TruncateToCapacity, reader.c_str(), reader.size()),
              PosixGroup::groupName_t(iox::TruncateToCapacity, writer.c_str(), writer.size()),
-             mempoolConfig});
+             mempoolConfig, 
+             memoryInfo);
     }
 
     return iox::ok(parsedConfig);

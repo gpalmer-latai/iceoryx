@@ -31,11 +31,13 @@ struct SegmentConfig
 {
     struct SegmentEntry
     {
-        SegmentEntry(const PosixGroup::groupName_t& readerGroup,
+        SegmentEntry(const ShmName_t &segmentName,
+                     const PosixGroup::groupName_t& readerGroup,
                      const PosixGroup::groupName_t& writerGroup,
                      const MePooConfig& memPoolConfig,
-                     iox::mepoo::MemoryInfo memoryInfo = iox::mepoo::MemoryInfo()) noexcept
-            : m_readerGroup(readerGroup)
+                     iox::mepoo::MemoryInfo memoryInfo) noexcept
+            : m_segmentName(segmentName)
+            , m_readerGroup(readerGroup)
             , m_writerGroup(writerGroup)
             , m_mempoolConfig(memPoolConfig)
             , m_memoryInfo(memoryInfo)
@@ -43,6 +45,7 @@ struct SegmentConfig
         {
         }
 
+        ShmName_t m_segmentName;
         PosixGroup::groupName_t m_readerGroup;
         PosixGroup::groupName_t m_writerGroup;
         MePooConfig m_mempoolConfig;
