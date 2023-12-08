@@ -1,0 +1,18 @@
+[general]
+version = 1
+
+[[segment]]
+name = "foo"
+writer = "gpalmer"
+
+[[segment.mempool]]
+size = 512
+count = 10
+
+[[segment]]
+name = "bar"
+writer = "gpalmer"
+
+[[segment.mempool]]
+size = 5120
+count = 10
