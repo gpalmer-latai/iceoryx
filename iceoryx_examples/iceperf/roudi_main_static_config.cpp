@@ -40,6 +40,9 @@ int main(int argc, char* argv[])
     /// @brief Create Mempool Config
     iox::mepoo::MePooConfig mepooConfig;
 
+    /// @brief Create MemoryInfo
+    iox::mepoo::MemoryInfo memoryInfo;
+
     /// @details Format: addMemPool({Chunksize(bytes), Amount of Chunks})
     mepooConfig.addMemPool({128, 10000}); // bytes
     mepooConfig.addMemPool({ONE_KILOBYTE, 5000});
@@ -52,8 +55,9 @@ int main(int argc, char* argv[])
     /// We want to use the Shared Memory Segment for the current user
     auto currentGroup = iox::PosixGroup::getGroupOfCurrentProcess();
 
+
     /// Create an Entry for a new Shared Memory Segment from the MempoolConfig and add it to the RouDiConfig
-    roudiConfig.m_sharedMemorySegments.push_back({currentGroup.getName(), currentGroup.getName(), mepooConfig});
+    roudiConfig.m_sharedMemorySegments.emplace_back(currentGroup.getName(), currentGroup.getName(), currentGroup.getName(), mepooConfig, memoryInfo);
 
     /// For the case that you want to give accessrights to the shm segments, you need to set groupnames as fixed string.
     /// These names defines groups whose members are either to read/write from/to the respective shared memory segment.

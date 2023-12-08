@@ -37,7 +37,8 @@ using namespace iox::mepoo;
 class MePooSegmentMock
 {
   public:
-    MePooSegmentMock(const MePooConfig& mempoolConfig [[maybe_unused]],
+    MePooSegmentMock(const ShmName_t& shmName [[maybe_unused]],
+                     const MePooConfig& mempoolConfig [[maybe_unused]],
                      iox::BumpAllocator& managementAllocator [[maybe_unused]],
                      const PosixGroup& readerGroup [[maybe_unused]],
                      const PosixGroup& writerGroup [[maybe_unused]],

@@ -35,12 +35,14 @@ constexpr access_rights MePooSegment<SharedMemoryObjectType, MemoryManagerType>:
 
 template <typename SharedMemoryObjectType, typename MemoryManagerType>
 inline MePooSegment<SharedMemoryObjectType, MemoryManagerType>::MePooSegment(
+    const ShmName_t& shmName,
     const MePooConfig& mempoolConfig,
     BumpAllocator& managementAllocator,
     const PosixGroup& readerGroup,
     const PosixGroup& writerGroup,
     const iox::mepoo::MemoryInfo& memoryInfo) noexcept
-    : m_readerGroup(readerGroup)
+    : m_shmName(shmName)
+    , m_readerGroup(readerGroup)
     , m_writerGroup(writerGroup)
     , m_memoryInfo(memoryInfo)
     , m_sharedMemoryObject(createSharedMemoryObject(mempoolConfig, writerGroup))
@@ -72,7 +74,7 @@ inline SharedMemoryObjectType MePooSegment<SharedMemoryObjectType, MemoryManager
 {
     return std::move(
         typename SharedMemoryObjectType::Builder()
-            .name(writerGroup.getName())
+            .name(m_shmName)
             .memorySizeInBytes(MemoryManager::requiredChunkMemorySize(mempoolConfig))
             .accessMode(AccessMode::READ_WRITE)
             .openMode(OpenMode::PURGE_AND_CREATE)
@@ -96,6 +98,12 @@ inline SharedMemoryObjectType MePooSegment<SharedMemoryObjectType, MemoryManager
             })
             .or_else([](auto&) { errorHandler(PoshError::MEPOO__SEGMENT_UNABLE_TO_CREATE_SHARED_MEMORY_OBJECT); })
             .value());
+}
+
+template <typename SharedMemoryObjectType, typename MemoryManagerType>
+inline const ShmName_t& MePooSegment<SharedMemoryObjectType, MemoryManagerType>::getShmName() const noexcept
+{
+    return m_shmName;
 }
 
 template <typename SharedMemoryObjectType, typename MemoryManagerType>

@@ -44,7 +44,7 @@ inline void SegmentManager<SegmentType>::createSegment(const SegmentConfig::Segm
     auto readerGroup = PosixGroup(segmentEntry.m_readerGroup);
     auto writerGroup = PosixGroup(segmentEntry.m_writerGroup);
     m_segmentContainer.emplace_back(
-        segmentEntry.m_mempoolConfig, *m_managementAllocator, readerGroup, writerGroup, segmentEntry.m_memoryInfo);
+        segmentEntry.m_shmName, segmentEntry.m_mempoolConfig, *m_managementAllocator, readerGroup, writerGroup, segmentEntry.m_memoryInfo);
 }
 
 template <typename SegmentType>
@@ -69,7 +69,10 @@ SegmentManager<SegmentType>::getSegmentMappings(const PosixUser& user) noexcept
                 if (!foundInWriterGroup)
                 {
                     mappingContainer.emplace_back(
-                        segment.getWriterGroup().getName(), segment.getSegmentSize(), true, segment.getSegmentId());
+                        segment.getShmName(),
+                        segment.getSegmentSize(),
+                        true,
+                        segment.getSegmentId());
                     foundInWriterGroup = true;
                 }
                 else
