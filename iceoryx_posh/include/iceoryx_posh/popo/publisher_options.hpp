@@ -41,6 +41,9 @@ struct PublisherOptions
     /// @brief The option whether the publisher should already be offered when creating it
     bool offerOnCreate{true};
 
+    /// @brief The name of the shared memory segment in which to publish messages.
+    iox::ShmName_t shmName{""};
+
     /// @brief The option whether the publisher should block when the subscriber queue is full
     ConsumerTooSlowPolicy subscriberTooSlowPolicy{ConsumerTooSlowPolicy::DISCARD_OLDEST_DATA};
 

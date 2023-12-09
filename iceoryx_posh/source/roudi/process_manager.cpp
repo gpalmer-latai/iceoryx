@@ -491,7 +491,7 @@ void ProcessManager::addPublisherForProcess(const RuntimeName_t& name,
 {
     findProcess(name)
         .and_then([&](auto& process) { // create a PublisherPort
-            auto segmentInfo = m_segmentManager->getSegmentInformationWithWriteAccessForUser(process->getUser());
+            auto segmentInfo = m_segmentManager->getSegmentInformation(publisherOptions.shmName, process->getUser());
 
             if (!segmentInfo.m_memoryManager.has_value())
             {
@@ -568,7 +568,7 @@ void ProcessManager::addClientForProcess(const RuntimeName_t& name,
 {
     findProcess(name)
         .and_then([&](auto& process) { // create a ClientPort
-            auto segmentInfo = m_segmentManager->getSegmentInformationWithWriteAccessForUser(process->getUser());
+            auto segmentInfo = m_segmentManager->getSegmentInformation(clientOptions.shmName, process->getUser());
 
             if (!segmentInfo.m_memoryManager.has_value())
             {
@@ -622,7 +622,7 @@ void ProcessManager::addServerForProcess(const RuntimeName_t& name,
 {
     findProcess(name)
         .and_then([&](auto& process) { // create a ServerPort
-            auto segmentInfo = m_segmentManager->getSegmentInformationWithWriteAccessForUser(process->getUser());
+            auto segmentInfo = m_segmentManager->getSegmentInformation(serverOptions.shmName, process->getUser());
 
             if (!segmentInfo.m_memoryManager.has_value())
             {

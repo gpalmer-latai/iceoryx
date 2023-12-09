@@ -3,7 +3,6 @@ version = 1
 
 [[segment]]
 name = "foo"
-writer = "gpalmer"
 
 [[segment.mempool]]
 size = 512
@@ -11,8 +10,16 @@ count = 10
 
 [[segment]]
 name = "bar"
-writer = "gpalmer"
 
 [[segment.mempool]]
-size = 5120
+size = 512
+count = 10
+
+# The name of this segment defaults to the name of the group with write access
+# The name of the group with write access defaults to the user launching the RouDi process
+# Apologies if your username is either "foo" or "bar" - this will create a conflict.
+[[segment]]
+
+[[segment.mempool]]
+size = 512
 count = 10

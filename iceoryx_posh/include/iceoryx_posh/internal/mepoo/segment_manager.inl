@@ -55,7 +55,6 @@ SegmentManager<SegmentType>::getSegmentMappings(const PosixUser& user) noexcept
     auto groupContainer = user.getGroups();
 
     SegmentManager::SegmentMappingContainer mappingContainer;
-    bool foundInWriterGroup = false;
 
     // with the groups we can get all the segments (read or write) for the user
     for (const auto& groupID : groupContainer)
@@ -64,22 +63,11 @@ SegmentManager<SegmentType>::getSegmentMappings(const PosixUser& user) noexcept
         {
             if (segment.getWriterGroup() == groupID)
             {
-                // a user is allowed to be only in one writer group, as we currently only support one memory manager per
-                // process
-                if (!foundInWriterGroup)
-                {
-                    mappingContainer.emplace_back(
-                        segment.getShmName(),
-                        segment.getSegmentSize(),
-                        true,
-                        segment.getSegmentId());
-                    foundInWriterGroup = true;
-                }
-                else
-                {
-                    errorHandler(PoshError::MEPOO__USER_WITH_MORE_THAN_ONE_WRITE_SEGMENT);
-                    return SegmentManager::SegmentMappingContainer();
-                }
+                mappingContainer.emplace_back(
+                    segment.getShmName(),
+                    segment.getSegmentSize(),
+                    true,
+                    segment.getSegmentId());
             }
         }
     }
@@ -105,18 +93,40 @@ SegmentManager<SegmentType>::getSegmentMappings(const PosixUser& user) noexcept
 
 template <typename SegmentType>
 inline typename SegmentManager<SegmentType>::SegmentUserInformation
-SegmentManager<SegmentType>::getSegmentInformationWithWriteAccessForUser(const PosixUser& user) noexcept
+SegmentManager<SegmentType>::getSegmentInformation(const ShmName_t& shmName, const PosixUser& user) noexcept
 {
     auto groupContainer = user.getGroups();
 
     SegmentUserInformation segmentInfo{nullopt_t(), 0u};
 
-    // with the groups we can search for the writable segment of this user
+    // First search for a segment with a matching name
+    for (auto& segment : m_segmentContainer)
+    {
+        if (segment.getShmName() == shmName)
+        {
+            //Verify that the user has write access to this segment.
+            for (const auto& groupID : groupContainer)
+            {
+                if (segment.getWriterGroup() == groupID)
+                {
+                    segmentInfo.m_memoryManager = segment.getMemoryManager();
+                    segmentInfo.m_segmentID = segment.getSegmentId();
+                    return segmentInfo;
+                }
+            }
+            // None was found so we return the default info.
+            return segmentInfo;
+        }
+    }
+    
+    // Fall back to searching for a writable segment whose name corresponds to one of the user groups.
+    // Note that this heuristic is based on the default behavior of RouDi to assign the name to the 
+    // writer group if no name is provided.
     for (const auto& groupID : groupContainer)
     {
         for (auto& segment : m_segmentContainer)
         {
-            if (segment.getWriterGroup() == groupID)
+            if (segment.getShmName() == groupID.getName() && segment.getWriterGroup() == groupID)
             {
                 segmentInfo.m_memoryManager = segment.getMemoryManager();
                 segmentInfo.m_segmentID = segment.getSegmentId();

@@ -26,6 +26,7 @@ Serialization ClientOptions::serialize() const noexcept
     return Serialization::create(responseQueueCapacity,
                                  nodeName,
                                  connectOnCreate,
+                                 shmName,
                                  static_cast<std::underlying_type_t<QueueFullPolicy>>(responseQueueFullPolicy),
                                  static_cast<std::underlying_type_t<ConsumerTooSlowPolicy>>(serverTooSlowPolicy));
 }
@@ -42,6 +43,7 @@ expected<ClientOptions, Serialization::Error> ClientOptions::deserialize(const S
     auto deserializationSuccessful = serialized.extract(clientOptions.responseQueueCapacity,
                                                         clientOptions.nodeName,
                                                         clientOptions.connectOnCreate,
+                                                        clientOptions.shmName,
                                                         responseQueueFullPolicy,
                                                         serverTooSlowPolicy);
 
@@ -60,7 +62,8 @@ expected<ClientOptions, Serialization::Error> ClientOptions::deserialize(const S
 bool ClientOptions::operator==(const ClientOptions& rhs) const noexcept
 {
     return responseQueueCapacity == rhs.responseQueueCapacity && nodeName == rhs.nodeName
-           && connectOnCreate == rhs.connectOnCreate && responseQueueFullPolicy == rhs.responseQueueFullPolicy
+           && connectOnCreate == rhs.connectOnCreate && shmName == rhs.shmName
+           && responseQueueFullPolicy == rhs.responseQueueFullPolicy
            && serverTooSlowPolicy == rhs.serverTooSlowPolicy;
 }
 } // namespace popo

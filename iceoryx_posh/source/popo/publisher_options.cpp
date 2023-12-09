@@ -26,6 +26,7 @@ Serialization PublisherOptions::serialize() const noexcept
     return Serialization::create(historyCapacity,
                                  nodeName,
                                  offerOnCreate,
+                                 shmName,
                                  static_cast<std::underlying_type_t<ConsumerTooSlowPolicy>>(subscriberTooSlowPolicy));
 }
 
@@ -39,6 +40,7 @@ expected<PublisherOptions, Serialization::Error> PublisherOptions::deserialize(c
     auto deserializationSuccessful = serialized.extract(publisherOptions.historyCapacity,
                                                         publisherOptions.nodeName,
                                                         publisherOptions.offerOnCreate,
+                                                        publisherOptions.shmName,
                                                         subscriberTooSlowPolicy);
 
     if (!deserializationSuccessful

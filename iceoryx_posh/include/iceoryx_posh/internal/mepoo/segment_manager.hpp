@@ -84,7 +84,14 @@ class SegmentManager
     using SegmentMappingContainer = vector<SegmentMapping, MAX_SHM_SEGMENTS>;
 
     SegmentMappingContainer getSegmentMappings(const PosixUser& user) noexcept;
-    SegmentUserInformation getSegmentInformationWithWriteAccessForUser(const PosixUser& user) noexcept;
+    
+    /// @brief Get the information for the requested segment
+    /// @param[in] shmName Name of the segment. 
+    ///                    If empty, each user group name will be tried instead until a match is found.
+    /// @param[in] user Posix user information. 
+    ///                 Used to determine write access and as a fallback for selecting a segment if no name is provided.
+    /// @return Information about the requested shared memory segment if one is found, otherwise an empty info struct.
+    SegmentUserInformation getSegmentInformation(const ShmName_t& shmName, const PosixUser& user) noexcept;
 
     static uint64_t requiredManagementMemorySize(const SegmentConfig& config) noexcept;
     static uint64_t requiredChunkMemorySize(const SegmentConfig& config) noexcept;

@@ -41,6 +41,9 @@ struct ServerOptions
     /// @brief The option whether the server should already be offered when creating it
     bool offerOnCreate{true};
 
+    /// @brief The name of the shared memory segment in which to publish messages.
+    iox::ShmName_t shmName{""};
+    
     /// @brief The option whether the client should block when the request queue is full
     /// @note Corresponds with ClientOptions::serverTooSlowPolicy
     QueueFullPolicy requestQueueFullPolicy{QueueFullPolicy::DISCARD_OLDEST_DATA};

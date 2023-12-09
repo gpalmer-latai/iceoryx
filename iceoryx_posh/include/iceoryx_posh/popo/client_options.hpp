@@ -41,6 +41,9 @@ struct ClientOptions
     /// @brief The option whether the client shall try to connect when creating it
     bool connectOnCreate{true};
 
+    /// @brief The name of the shared memory segment in which to publish messages.
+    iox::ShmName_t shmName{""};
+
     /// @brief The option whether the server should block when the response queue is full
     /// @note Corresponds with ServerOptions::clientTooSlowPolicy
     QueueFullPolicy responseQueueFullPolicy{QueueFullPolicy::DISCARD_OLDEST_DATA};
