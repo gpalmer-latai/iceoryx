@@ -27,6 +27,7 @@ Serialization SubscriberOptions::serialize() const noexcept
                                  historyRequest,
                                  nodeName,
                                  subscribeOnCreate,
+                                 shmName,
                                  static_cast<std::underlying_type_t<QueueFullPolicy>>(queueFullPolicy),
                                  requiresPublisherHistorySupport);
 }
@@ -43,6 +44,7 @@ SubscriberOptions::deserialize(const Serialization& serialized) noexcept
                                                         subscriberOptions.historyRequest,
                                                         subscriberOptions.nodeName,
                                                         subscriberOptions.subscribeOnCreate,
+                                                        subscriberOptions.shmName,
                                                         queueFullPolicy,
                                                         subscriberOptions.requiresPublisherHistorySupport);
 

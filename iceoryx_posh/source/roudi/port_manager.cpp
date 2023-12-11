@@ -529,13 +529,15 @@ bool PortManager::isCompatiblePubSub(const PublisherPortRouDiType& publisher,
     auto& pubOpts = publisher.getOptions();
     auto& subOpts = subscriber.getOptions();
 
+    const bool shmSegmentMatches = subOpts.shmName.empty() || subOpts.shmName == pubOpts.shmName;
+
     const bool blockingPoliciesAreCompatible =
         !(pubOpts.subscriberTooSlowPolicy == popo::ConsumerTooSlowPolicy::DISCARD_OLDEST_DATA
           && subOpts.queueFullPolicy == popo::QueueFullPolicy::BLOCK_PRODUCER);
 
     const bool historyRequestIsCompatible = !subOpts.requiresPublisherHistorySupport || pubOpts.historyCapacity > 0;
 
-    return blockingPoliciesAreCompatible && historyRequestIsCompatible;
+    return shmSegmentMatches && blockingPoliciesAreCompatible && historyRequestIsCompatible;
 }
 
 bool PortManager::sendToAllMatchingPublisherPorts(const capro::CaproMessage& message,

@@ -39,7 +39,7 @@ iox::popo::Publisher<StringPayload> create_publisher(const iox::ShmName_t& segme
 int main()
 {
     //! [initialize runtime]
-    constexpr char APP_NAME[] = "iox-cpp-named-segments";
+    constexpr char APP_NAME[] = "iox-cpp-publisher-named-segments";
     iox::runtime::PoshRuntime::initRuntime(APP_NAME);
     //! [initialize runtime]
 

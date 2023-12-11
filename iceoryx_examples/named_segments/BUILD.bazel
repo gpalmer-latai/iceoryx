@@ -5,3 +5,9 @@ cc_binary(
     srcs = ["publishers.cpp"],
     deps = ["//iceoryx_posh"],
 )
+
+cc_binary(
+    name = "subscriber",
+    srcs = ["subscriber.cpp"],
+    deps = ["//iceoryx_posh"],
+)
