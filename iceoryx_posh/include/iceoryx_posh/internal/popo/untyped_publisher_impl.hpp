@@ -33,7 +33,7 @@ class UntypedPublisherImpl : public BasePublisherType
   public:
     explicit UntypedPublisherImpl(const capro::ServiceDescription& service,
                                   const PublisherOptions& publisherOptions = PublisherOptions(),
-                                  const function<void(const mepoo::SegmentManager<>::SegmentMapping&)>& post_init = [](const auto&){});
+                                  const function<void(const mepoo::SegmentMapping&)>& post_init = [](const auto&){});
     UntypedPublisherImpl(const UntypedPublisherImpl& other) = delete;
     UntypedPublisherImpl& operator=(const UntypedPublisherImpl&) = delete;
     UntypedPublisherImpl(UntypedPublisherImpl&& rhs) = delete;

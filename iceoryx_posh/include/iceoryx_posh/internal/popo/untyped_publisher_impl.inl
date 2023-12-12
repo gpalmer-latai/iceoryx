@@ -27,7 +27,7 @@ namespace popo
 template <typename BasePublisherType>
 inline UntypedPublisherImpl<BasePublisherType>::UntypedPublisherImpl(const capro::ServiceDescription& service,
                                                                      const PublisherOptions& publisherOptions,
-                                                                     const function<void(const mepoo::SegmentManager<>::SegmentMapping&)>& post_init)
+                                                                     const function<void(const mepoo::SegmentMapping&)>& post_init)
     : BasePublisherType(service, publisherOptions, post_init)
 {
 }

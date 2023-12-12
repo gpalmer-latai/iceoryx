@@ -154,7 +154,7 @@ TEST_F(SegmentManager_test, getMemoryManagerForUserWithWriteUser)
     GTEST_SKIP_FOR_ADDITIONAL_USER() << "This test requires the -DTEST_WITH_ADDITIONAL_USER=ON cmake argument";
 
     auto sut = createSut();
-    auto memoryManager = sut->getSegmentInformationWithWriteAccessForUser(PosixUser{"iox_roudi_test2"}).m_memoryManager;
+    auto memoryManager = sut->getSegmentInformation("iox_roudi_test2", PosixUser{"iox_roudi_test2"}).m_memoryManager;
     ASSERT_TRUE(memoryManager.has_value());
     ASSERT_THAT(memoryManager.value().get().getNumberOfMemPools(), Eq(2u));
 
@@ -171,7 +171,7 @@ TEST_F(SegmentManager_test, getMemoryManagerForUserFailWithReadOnlyUser)
 
     auto sut = createSut();
     EXPECT_FALSE(
-        sut->getSegmentInformationWithWriteAccessForUser(PosixUser{"iox_roudi_test1"}).m_memoryManager.has_value());
+        sut->getSegmentInformation("iox_roudi_test1", PosixUser{"iox_roudi_test1"}).m_memoryManager.has_value());
 }
 
 TEST_F(SegmentManager_test, getMemoryManagerForUserFailWithNonExistingUser)
@@ -180,7 +180,7 @@ TEST_F(SegmentManager_test, getMemoryManagerForUserFailWithNonExistingUser)
     GTEST_SKIP_FOR_ADDITIONAL_USER() << "This test requires the -DTEST_WITH_ADDITIONAL_USER=ON cmake argument";
 
     auto sut = createSut();
-    EXPECT_FALSE(sut->getSegmentInformationWithWriteAccessForUser(PosixUser{"no_user"}).m_memoryManager.has_value());
+    EXPECT_FALSE(sut->getSegmentInformation("no_user", PosixUser{"no_user"}).m_memoryManager.has_value());
 }
 
 TEST_F(SegmentManager_test, addingMoreThanOneWriterGroupFails)

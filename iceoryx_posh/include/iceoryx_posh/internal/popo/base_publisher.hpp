@@ -19,6 +19,7 @@
 #define IOX_POSH_POPO_BASE_PUBLISHER_HPP
 
 #include "iceoryx_posh/internal/popo/ports/publisher_port_user.hpp"
+#include "iceoryx_posh/internal/mepoo/segment_manager.hpp"
 #include "iceoryx_posh/popo/sample.hpp"
 #include "iox/expected.hpp"
 #include "iox/optional.hpp"
@@ -85,7 +86,7 @@ class BasePublisher
     BasePublisher() = default; // Required for testing.
     BasePublisher(const capro::ServiceDescription& service, 
                   const PublisherOptions& publisherOptions,
-                  const function<void(const mepoo::SegmentManager<>::SegmentMapping&)>& post_init = [](const auto&){});
+                  const function<void(const mepoo::SegmentMapping&)>& post_init = [](const auto&){});
 
     ///
     /// @brief port

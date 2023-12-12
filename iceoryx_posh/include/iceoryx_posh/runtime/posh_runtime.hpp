@@ -27,6 +27,7 @@
 #include "iceoryx_posh/internal/popo/ports/subscriber_port_user.hpp"
 #include "iceoryx_posh/internal/runtime/ipc_runtime_interface.hpp"
 #include "iceoryx_posh/internal/runtime/node_property.hpp"
+#include "iceoryx_posh/internal/mepoo/segment_manager.hpp"
 #include "iceoryx_posh/popo/client_options.hpp"
 #include "iceoryx_posh/popo/server_options.hpp"
 #include "iceoryx_posh/popo/subscriber_options.hpp"
@@ -100,7 +101,8 @@ class PoshRuntime
     virtual PublisherPortUserType::MemberType_t*
     getMiddlewarePublisher(const capro::ServiceDescription& service,
                            const popo::PublisherOptions& publisherOptions = {},
-                           const PortConfigInfo& portConfigInfo = {}) noexcept = 0;
+                           const PortConfigInfo& portConfigInfo = {},
+                           const function<void(const mepoo::SegmentMapping&)>& post_init = [](const auto&){}) noexcept = 0;
 
     /// @brief request the RouDi daemon to create a subscriber port
     /// @param[in] serviceDescription service description for the new subscriber port
@@ -111,7 +113,8 @@ class PoshRuntime
     virtual SubscriberPortUserType::MemberType_t*
     getMiddlewareSubscriber(const capro::ServiceDescription& service,
                             const popo::SubscriberOptions& subscriberOptions = {},
-                            const PortConfigInfo& portConfigInfo = {}) noexcept = 0;
+                            const PortConfigInfo& portConfigInfo = {},
+                            const function<void(const mepoo::SegmentMapping&)>& post_init = [](const auto&){}) noexcept = 0;
 
     /// @brief request the RouDi daemon to create a client port
     /// @param[in] serviceDescription service description for the new client port

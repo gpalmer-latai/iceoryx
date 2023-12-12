@@ -48,13 +48,13 @@ inline void SegmentManager<SegmentType>::createSegment(const SegmentConfig::Segm
 }
 
 template <typename SegmentType>
-inline typename SegmentManager<SegmentType>::SegmentMappingContainer
+inline SegmentMappingContainer
 SegmentManager<SegmentType>::getSegmentMappings(const PosixUser& user) noexcept
 {
     // get all the groups the user is in
     auto groupContainer = user.getGroups();
 
-    SegmentManager::SegmentMappingContainer mappingContainer;
+    SegmentMappingContainer mappingContainer;
 
     // with the groups we can get all the segments (read or write) for the user
     for (const auto& groupID : groupContainer)
@@ -92,7 +92,7 @@ SegmentManager<SegmentType>::getSegmentMappings(const PosixUser& user) noexcept
 }
 
 template <typename SegmentType>
-inline typename SegmentManager<SegmentType>::SegmentUserInformation
+inline SegmentUserInformation
 SegmentManager<SegmentType>::getSegmentInformation(const ShmName_t& shmName, const PosixUser& user) noexcept
 {
     auto groupContainer = user.getGroups();

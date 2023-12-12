@@ -92,7 +92,7 @@ class PortManager_test : public Test
 
         auto user = PosixUser::getUserOfCurrentProcess();
         auto segmentInfo =
-            m_roudiMemoryManager->segmentManager().value()->getSegmentInformationWithWriteAccessForUser(user);
+            m_roudiMemoryManager->segmentManager().value()->getSegmentInformation(user.getName(), user);
         ASSERT_TRUE(segmentInfo.m_memoryManager.has_value());
 
         m_payloadDataSegmentMemoryManager = &segmentInfo.m_memoryManager.value().get();

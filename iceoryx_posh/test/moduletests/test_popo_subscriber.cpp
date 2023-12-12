@@ -38,8 +38,9 @@ class StubbedSubscriber : public iox::popo::SubscriberImpl<T, H, BaseSubscriber>
     using SubscriberParent = iox::popo::SubscriberImpl<T, H, BaseSubscriber>;
 
     StubbedSubscriber(const iox::capro::ServiceDescription& service,
-                      const iox::popo::SubscriberOptions& subscriberOptions = iox::popo::SubscriberOptions())
-        : SubscriberParent(service, subscriberOptions)
+                      const iox::popo::SubscriberOptions& subscriberOptions = iox::popo::SubscriberOptions(),
+                      const iox::function<void(const iox::mepoo::SegmentMapping&)>& post_init = [](const auto&){} )
+        : SubscriberParent(service, subscriberOptions, post_init)
     {
     }
 
@@ -65,7 +66,7 @@ class SubscriberTest : public Test
 
   protected:
     ChunkMock<DummyData> chunkMock;
-    TestSubscriber sut{{"", "", ""}, iox::popo::SubscriberOptions()};
+    TestSubscriber sut{{"", "", ""}, iox::popo::SubscriberOptions(), [](const auto&){}};
 };
 
 TEST_F(SubscriberTest, GetsUIDViaBaseSubscriber)

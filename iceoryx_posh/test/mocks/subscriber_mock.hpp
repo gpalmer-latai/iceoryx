@@ -70,7 +70,9 @@ class MockBaseSubscriber
     using SelfType = MockBaseSubscriber<T, Port>;
     using PortType = Port;
 
-    MockBaseSubscriber(const iox::capro::ServiceDescription&, const iox::popo::SubscriberOptions&){};
+    MockBaseSubscriber(const iox::capro::ServiceDescription&, 
+                       const iox::popo::SubscriberOptions&, 
+                       const iox::function<void(const iox::mepoo::SegmentMapping&)>&){};
     MOCK_CONST_METHOD0(getUid, iox::popo::uid_t());
     MOCK_CONST_METHOD0(getServiceDescription, iox::capro::ServiceDescription());
     MOCK_METHOD1(subscribe, void(uint64_t));

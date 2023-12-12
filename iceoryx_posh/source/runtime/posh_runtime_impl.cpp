@@ -46,7 +46,7 @@ PoshRuntimeImpl::PoshRuntimeImpl(optional<const RuntimeName_t*> name, const Runt
     }())
     // When the runtime is located in a separate process from RouDi, the ShmInterface must be created first
     // in order to register the segment id for the segment manager and the segments it manages.
-    , m_SegmentManager(m_ipcChannelInterface.getSegmentId(), m_ipcChannelInterface.getSegmentManagerAddressOffset())
+    , m_segmentManager(m_ipcChannelInterface.getSegmentManagerAddressOffset(), segment_id_t{m_ipcChannelInterface.getSegmentId()})
 {
     MutexBuilder()
         .isInterProcessCapable(false)
@@ -102,7 +102,7 @@ PublisherPortUserType::MemberType_t*
 PoshRuntimeImpl::getMiddlewarePublisher(const capro::ServiceDescription& service,
                                         const popo::PublisherOptions& publisherOptions,
                                         const PortConfigInfo& portConfigInfo,
-                                        const function<void(const mepoo::SegmentManager<>::SegmentMapping&)>& post_init) noexcept
+                                        const function<void(const mepoo::SegmentMapping&)>& post_init) noexcept
 {
     constexpr uint64_t MAX_HISTORY_CAPACITY =
         PublisherPortUserType::MemberType_t::ChunkSenderData_t::ChunkDistributorDataProperties_t::MAX_HISTORY_CAPACITY;
@@ -228,7 +228,7 @@ SubscriberPortUserType::MemberType_t*
 PoshRuntimeImpl::getMiddlewareSubscriber(const capro::ServiceDescription& service,
                                          const popo::SubscriberOptions& subscriberOptions,
                                          const PortConfigInfo& portConfigInfo,
-                                         const function<void(const mepoo::SegmentManager<>::SegmentMapping&)>& post_init) noexcept
+                                         const function<void(const mepoo::SegmentMapping&)>& post_init) noexcept
 {
     constexpr uint64_t MAX_QUEUE_CAPACITY = SubscriberPortUserType::MemberType_t::ChunkQueueData_t::MAX_CAPACITY;
 

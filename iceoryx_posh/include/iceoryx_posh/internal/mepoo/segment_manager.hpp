@@ -38,6 +38,37 @@ class MemPoolIntrospection;
 
 namespace mepoo
 {
+struct SegmentMapping
+{
+  public:
+    SegmentMapping(const ShmName_t& shmName,
+                    uint64_t size,
+                    bool isWritable,
+                    uint64_t segmentId,
+                    const iox::mepoo::MemoryInfo& memoryInfo = iox::mepoo::MemoryInfo()) noexcept
+        : m_shmName(shmName)
+        , m_size(size)
+        , m_isWritable(isWritable)
+        , m_segmentId(segmentId)
+        , m_memoryInfo(memoryInfo)
+
+    {
+    }
+
+    ShmName_t m_shmName{""};
+    uint64_t m_size{0};
+    bool m_isWritable{false};
+    uint64_t m_segmentId{0};
+    iox::mepoo::MemoryInfo m_memoryInfo; // we can specify additional info about a segments memory here
+};
+using SegmentMappingContainer = vector<SegmentMapping, MAX_SHM_SEGMENTS>;
+
+struct SegmentUserInformation
+{
+    optional<std::reference_wrapper<MemoryManager>> m_memoryManager;
+    uint64_t m_segmentID;
+};
+
 template <typename SegmentType = MePooSegment<>>
 class SegmentManager
 {
@@ -51,37 +82,6 @@ class SegmentManager
     SegmentManager& operator=(const SegmentManager& rhs) = delete;
     SegmentManager& operator=(SegmentManager&& rhs) = delete;
 
-    struct SegmentMapping
-    {
-      public:
-        SegmentMapping(const ShmName_t& shmName,
-                       uint64_t size,
-                       bool isWritable,
-                       uint64_t segmentId,
-                       const iox::mepoo::MemoryInfo& memoryInfo = iox::mepoo::MemoryInfo()) noexcept
-            : m_shmName(shmName)
-            , m_size(size)
-            , m_isWritable(isWritable)
-            , m_segmentId(segmentId)
-            , m_memoryInfo(memoryInfo)
-
-        {
-        }
-
-        ShmName_t m_shmName{""};
-        uint64_t m_size{0};
-        bool m_isWritable{false};
-        uint64_t m_segmentId{0};
-        iox::mepoo::MemoryInfo m_memoryInfo; // we can specify additional info about a segments memory here
-    };
-
-    struct SegmentUserInformation
-    {
-        optional<std::reference_wrapper<MemoryManager>> m_memoryManager;
-        uint64_t m_segmentID;
-    };
-
-    using SegmentMappingContainer = vector<SegmentMapping, MAX_SHM_SEGMENTS>;
 
     SegmentMappingContainer getSegmentMappings(const PosixUser& user) noexcept;
     

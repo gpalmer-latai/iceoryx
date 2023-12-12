@@ -27,7 +27,7 @@ namespace popo
 template <typename port_t>
 inline BasePublisher<port_t>::BasePublisher(const capro::ServiceDescription& service,
                                             const PublisherOptions& publisherOptions,
-                                            const function<void(const mepoo::SegmentManager<>::SegmentMapping&)>& post_init)
+                                            const function<void(const mepoo::SegmentMapping&)>& post_init)
     : m_port(iox::runtime::PoshRuntime::getInstance().getMiddlewarePublisher(service, publisherOptions, {}, post_init))
 {
 }

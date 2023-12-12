@@ -19,9 +19,11 @@
 #define IOX_POSH_MOCKS_PUBLISHER_MOCK_HPP
 
 #include "iceoryx_posh/internal/popo/base_publisher.hpp"
+#include "iceoryx_posh/internal/mepoo/segment_manager.hpp"
 #include "iceoryx_posh/popo/publisher.hpp"
 #include "iceoryx_posh/popo/sample.hpp"
 #include "iox/expected.hpp"
+#include "iox/function.hpp"
 
 #include "test.hpp"
 
@@ -79,7 +81,9 @@ class MockBasePublisher
   public:
     using PortType = MockPublisherPortUser;
 
-    MockBasePublisher(const iox::capro::ServiceDescription&, const iox::popo::PublisherOptions&){};
+    MockBasePublisher(const iox::capro::ServiceDescription&, 
+                      const iox::popo::PublisherOptions&, 
+                      const iox::function<void(const iox::mepoo::SegmentMapping&)>& post_init = [](const auto&){}){};
     MOCK_CONST_METHOD0(getUid, iox::popo::uid_t());
     MOCK_CONST_METHOD0(getServiceDescription, iox::capro::ServiceDescription());
     MOCK_METHOD0(offer, void(void));

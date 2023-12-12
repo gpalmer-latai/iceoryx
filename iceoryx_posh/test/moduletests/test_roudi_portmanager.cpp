@@ -26,12 +26,12 @@ using iox::lossy;
 
 PublisherOptions createTestPubOptions()
 {
-    return PublisherOptions{0U, iox::NodeName_t("node"), true, iox::popo::ConsumerTooSlowPolicy::DISCARD_OLDEST_DATA};
+    return PublisherOptions{0U, iox::NodeName_t("node"), true, "", iox::popo::ConsumerTooSlowPolicy::DISCARD_OLDEST_DATA};
 }
 
 SubscriberOptions createTestSubOptions()
 {
-    return SubscriberOptions{1U, 0U, iox::NodeName_t("node"), true, QueueFullPolicy::DISCARD_OLDEST_DATA, false};
+    return SubscriberOptions{1U, 0U, iox::NodeName_t("node"), true, "", QueueFullPolicy::DISCARD_OLDEST_DATA, false};
 }
 
 TEST_F(PortManager_test, DoDiscoveryWithSingleShotPublisherFirst)
@@ -411,8 +411,8 @@ TEST_F(PortManager_test, DoDiscoveryPublisherCanWaitAndSubscriberRequestsBlockin
 {
     ::testing::Test::RecordProperty("TEST_ID", "34380b13-5541-4fdf-b266-beccb90f5215");
     PublisherOptions publisherOptions{
-        1U, iox::NodeName_t("node"), true, iox::popo::ConsumerTooSlowPolicy::WAIT_FOR_CONSUMER};
-    SubscriberOptions subscriberOptions{1U, 1U, iox::NodeName_t("node"), true, QueueFullPolicy::BLOCK_PRODUCER};
+        1U, iox::NodeName_t("node"), true, "", iox::popo::ConsumerTooSlowPolicy::WAIT_FOR_CONSUMER};
+    SubscriberOptions subscriberOptions{1U, 1U, iox::NodeName_t("node"), true, "", QueueFullPolicy::BLOCK_PRODUCER};
     PublisherPortUser publisher(
         m_portManager
             ->acquirePublisherPortData(
@@ -432,8 +432,8 @@ TEST_F(PortManager_test, DoDiscoveryBothDiscardOldestPolicyLeadsToConnect)
 {
     ::testing::Test::RecordProperty("TEST_ID", "3cf03140-9ca6-47a1-b45b-8cfa70e3fd5c");
     PublisherOptions publisherOptions{
-        1U, iox::NodeName_t("node"), true, iox::popo::ConsumerTooSlowPolicy::DISCARD_OLDEST_DATA};
-    SubscriberOptions subscriberOptions{1U, 1U, iox::NodeName_t("node"), true, QueueFullPolicy::DISCARD_OLDEST_DATA};
+        1U, iox::NodeName_t("node"), true, "", iox::popo::ConsumerTooSlowPolicy::DISCARD_OLDEST_DATA};
+    SubscriberOptions subscriberOptions{1U, 1U, iox::NodeName_t("node"), true, "", QueueFullPolicy::DISCARD_OLDEST_DATA};
     PublisherPortUser publisher(
         m_portManager
             ->acquirePublisherPortData(
@@ -453,8 +453,8 @@ TEST_F(PortManager_test, DoDiscoveryPublisherDoesNotAllowBlockingAndSubscriberRe
 {
     ::testing::Test::RecordProperty("TEST_ID", "31d879bf-ca07-4f29-90cd-a46f09a98f7c");
     PublisherOptions publisherOptions{
-        1U, iox::NodeName_t("node"), true, iox::popo::ConsumerTooSlowPolicy::DISCARD_OLDEST_DATA};
-    SubscriberOptions subscriberOptions{1U, 1U, iox::NodeName_t("node"), true, QueueFullPolicy::BLOCK_PRODUCER};
+        1U, iox::NodeName_t("node"), true, "", iox::popo::ConsumerTooSlowPolicy::DISCARD_OLDEST_DATA};
+    SubscriberOptions subscriberOptions{1U, 1U, iox::NodeName_t("node"), true, "", QueueFullPolicy::BLOCK_PRODUCER};
     PublisherPortUser publisher(
         m_portManager
             ->acquirePublisherPortData(
@@ -473,8 +473,8 @@ TEST_F(PortManager_test, DoDiscoveryPublisherCanWaitAndSubscriberDiscardOldestLe
 {
     ::testing::Test::RecordProperty("TEST_ID", "f2ea15a6-0672-4a98-8f80-f2900b247ac0");
     PublisherOptions publisherOptions{
-        1U, iox::NodeName_t("node"), true, iox::popo::ConsumerTooSlowPolicy::WAIT_FOR_CONSUMER};
-    SubscriberOptions subscriberOptions{1U, 1U, iox::NodeName_t("node"), true, QueueFullPolicy::DISCARD_OLDEST_DATA};
+        1U, iox::NodeName_t("node"), true, "", iox::popo::ConsumerTooSlowPolicy::WAIT_FOR_CONSUMER};
+    SubscriberOptions subscriberOptions{1U, 1U, iox::NodeName_t("node"), true, "", QueueFullPolicy::DISCARD_OLDEST_DATA};
     PublisherPortUser publisher(
         m_portManager
             ->acquirePublisherPortData(
@@ -798,7 +798,7 @@ TEST_F(PortManager_test, UnblockProcessShutdownMakesPublisherStopOffer)
 
     // get publisher and subscriber
     PublisherOptions publisherOptions{
-        0U, iox::NodeName_t("node"), true, iox::popo::ConsumerTooSlowPolicy::WAIT_FOR_CONSUMER};
+        0U, iox::NodeName_t("node"), true, "", iox::popo::ConsumerTooSlowPolicy::WAIT_FOR_CONSUMER};
     PublisherPortUser publisher(m_portManager
                                     ->acquirePublisherPortData({"1", "1", "1"},
                                                                publisherOptions,
@@ -819,9 +819,9 @@ void PortManager_test::setupAndTestBlockingPublisher(const iox::RuntimeName_t& p
 {
     // get publisher and subscriber
     PublisherOptions publisherOptions{
-        0U, iox::NodeName_t("node"), true, iox::popo::ConsumerTooSlowPolicy::WAIT_FOR_CONSUMER};
+        0U, iox::NodeName_t("node"), true, "", iox::popo::ConsumerTooSlowPolicy::WAIT_FOR_CONSUMER};
     SubscriberOptions subscriberOptions{
-        1U, 0U, iox::NodeName_t("node"), true, iox::popo::QueueFullPolicy::BLOCK_PRODUCER};
+        1U, 0U, iox::NodeName_t("node"), true, "", iox::popo::QueueFullPolicy::BLOCK_PRODUCER};
     PublisherPortUser publisher(m_portManager
                                     ->acquirePublisherPortData({"1", "1", "1"},
                                                                publisherOptions,

@@ -83,7 +83,7 @@ iox::Serialization enumSerialization(QueueFullPolicyUT responseQueueFullPolicy,
     constexpr bool CONNECT_ON_CREATE{true};
 
     return iox::Serialization::create(
-        RESPONSE_QUEUE_CAPACITY, NODE_NAME, CONNECT_ON_CREATE, responseQueueFullPolicy, serverTooSlowPolicy);
+        RESPONSE_QUEUE_CAPACITY, NODE_NAME, CONNECT_ON_CREATE, "", responseQueueFullPolicy, serverTooSlowPolicy);
 }
 
 TEST(ClientOptions_test, DeserializingValidResponseQueueFullAndServerTooSlowPolicyIsSuccessful)

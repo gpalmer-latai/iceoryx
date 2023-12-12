@@ -90,7 +90,7 @@ TEST_F(ListenerWaitsetAttachments_test, SubscriberDestructorCallsTriggerResetDir
                                       RUNTIME_NAME,
                                       VariantQueueTypes::SoFi_MultiProducerSingleConsumer,
                                       SubscriberOptions());
-    EXPECT_CALL(*this->runtimeMock, getMiddlewareSubscriber(_, _, _)).WillOnce(Return(&subscriberData));
+    EXPECT_CALL(*this->runtimeMock, getMiddlewareSubscriber(_, _, _, _)).WillOnce(Return(&subscriberData));
 
     optional<Subscriber<int>> subscriber;
     subscriber.emplace(ServiceDescription(SERVICE, INSTANCE, EVENT));
@@ -114,7 +114,7 @@ TEST_F(ListenerWaitsetAttachments_test, UntypedSubscriberDestructorCallsTriggerR
                                       RUNTIME_NAME,
                                       VariantQueueTypes::SoFi_MultiProducerSingleConsumer,
                                       SubscriberOptions());
-    EXPECT_CALL(*this->runtimeMock, getMiddlewareSubscriber(_, _, _)).WillOnce(Return(&subscriberData));
+    EXPECT_CALL(*this->runtimeMock, getMiddlewareSubscriber(_, _, _, _)).WillOnce(Return(&subscriberData));
 
     optional<UntypedSubscriber> subscriber;
     subscriber.emplace(ServiceDescription(SERVICE, INSTANCE, EVENT));
@@ -222,7 +222,7 @@ TEST_F(ListenerWaitsetAttachments_test, ServiceDiscoveryDestructorCallsTriggerRe
                                       RUNTIME_NAME,
                                       VariantQueueTypes::SoFi_MultiProducerSingleConsumer,
                                       SubscriberOptions());
-    EXPECT_CALL(*this->runtimeMock, getMiddlewareSubscriber(_, _, _)).WillOnce(Return(&subscriberData));
+    EXPECT_CALL(*this->runtimeMock, getMiddlewareSubscriber(_, _, _, _)).WillOnce(Return(&subscriberData));
 
     optional<iox::runtime::ServiceDiscovery> serviceDiscovery;
     serviceDiscovery.emplace();

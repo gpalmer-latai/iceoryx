@@ -30,7 +30,7 @@ namespace popo
 template <typename T, typename H, typename BasePublisherType>
 inline PublisherImpl<T, H, BasePublisherType>::PublisherImpl(const capro::ServiceDescription& service,
                                                              const PublisherOptions& publisherOptions,
-                                                             const function<void(const mepoo::SegmentManager<>::SegmentMapping&)>& post_init)
+                                                             const function<void(const mepoo::SegmentMapping&)>& post_init)
     : BasePublisherType(service, publisherOptions, post_init)
 {
 }

@@ -144,14 +144,14 @@ TEST_F(ProcessManager_test, HandleProcessShutdownPreparationRequestWorks)
     auto user = PosixUser::getUserOfCurrentProcess();
     auto payloadDataSegmentMemoryManager = m_roudiMemoryManager->segmentManager()
                                                .value()
-                                               ->getSegmentInformationWithWriteAccessForUser(user)
+                                               ->getSegmentInformation(user.getName(), user)
                                                .m_memoryManager;
 
     ASSERT_TRUE(payloadDataSegmentMemoryManager.has_value());
 
     // get publisher and subscriber
     PublisherOptions publisherOptions{
-        0U, iox::NodeName_t("node"), true, iox::popo::ConsumerTooSlowPolicy::WAIT_FOR_CONSUMER};
+        0U, iox::NodeName_t("node"), true, "", iox::popo::ConsumerTooSlowPolicy::WAIT_FOR_CONSUMER};
     PublisherPortUser publisher(m_portManager
                                     ->acquirePublisherPortData({"1", "1", "1"},
                                                                publisherOptions,

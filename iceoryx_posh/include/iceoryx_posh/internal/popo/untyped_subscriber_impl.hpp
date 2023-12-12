@@ -43,7 +43,7 @@ class UntypedSubscriberImpl : public BaseSubscriberType
 
     explicit UntypedSubscriberImpl(const capro::ServiceDescription& service,
                                    const SubscriberOptions& subscriberOptions = SubscriberOptions(),
-                                   const function<void(const mepoo::SegmentManager<>::SegmentMapping&)>& post_init = [](const auto&){});
+                                   const function<void(const mepoo::SegmentMapping&)>& post_init = [](const auto&){});
     UntypedSubscriberImpl(const UntypedSubscriberImpl& other) = delete;
     UntypedSubscriberImpl& operator=(const UntypedSubscriberImpl&) = delete;
     UntypedSubscriberImpl(UntypedSubscriberImpl&& rhs) = delete;

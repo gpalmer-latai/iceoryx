@@ -79,7 +79,7 @@ class PublisherPort_test : public Test
 
     // publisher port w/o offer on create
     iox::popo::PublisherOptions m_noOfferOnCreatePublisherOptions{
-        0U, iox::NodeName_t{""}, false, iox::popo::ConsumerTooSlowPolicy::DISCARD_OLDEST_DATA};
+        0U, iox::NodeName_t{""}, false, "", iox::popo::ConsumerTooSlowPolicy::DISCARD_OLDEST_DATA};
     iox::popo::PublisherPortData m_publisherPortDataNoOfferOnCreate{
         iox::capro::ServiceDescription("a", "b", "c"), "myApp", &m_memoryManager, m_noOfferOnCreatePublisherOptions};
     iox::popo::PublisherPortRouDi m_sutNoOfferOnCreateRouDiSide{&m_publisherPortDataNoOfferOnCreate};
@@ -87,7 +87,7 @@ class PublisherPort_test : public Test
 
     // publisher port that waits for subscriber when queue is full
     iox::popo::PublisherOptions m_waitForSubscriberPublisherOptions{
-        0U, iox::NodeName_t{""}, false, iox::popo::ConsumerTooSlowPolicy::WAIT_FOR_CONSUMER};
+        0U, iox::NodeName_t{""}, false, "", iox::popo::ConsumerTooSlowPolicy::WAIT_FOR_CONSUMER};
     iox::popo::PublisherPortData m_publisherPortDataWaitForSubscriber{
         iox::capro::ServiceDescription("a", "b", "c"), "myApp", &m_memoryManager, m_waitForSubscriberPublisherOptions};
     iox::popo::PublisherPortRouDi m_sutWaitForSubscriberRouDiSide{&m_publisherPortDataWaitForSubscriber};
@@ -95,7 +95,7 @@ class PublisherPort_test : public Test
 
     // publisher port w/ history
     iox::popo::PublisherOptions m_withHistoryPublisherOptions{
-        iox::MAX_PUBLISHER_HISTORY, iox::NodeName_t{""}, true, iox::popo::ConsumerTooSlowPolicy::DISCARD_OLDEST_DATA};
+        iox::MAX_PUBLISHER_HISTORY, iox::NodeName_t{""}, true, "", iox::popo::ConsumerTooSlowPolicy::DISCARD_OLDEST_DATA};
     iox::popo::PublisherPortData m_publisherPortDataHistory{
         iox::capro::ServiceDescription("x", "y", "z"), "myApp", &m_memoryManager, m_withHistoryPublisherOptions};
     iox::popo::PublisherPortUser m_sutWithHistoryUserSide{&m_publisherPortDataHistory};
