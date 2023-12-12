@@ -37,7 +37,8 @@ class SubscriberImpl : public BaseSubscriberType
 
   public:
     explicit SubscriberImpl(const capro::ServiceDescription& service,
-                            const SubscriberOptions& subscriberOptions = SubscriberOptions()) noexcept;
+                            const SubscriberOptions& subscriberOptions = SubscriberOptions(),
+                            const function<void(const mepoo::SegmentManager<>::SegmentMapping&)>& post_init = [](const auto&){}) noexcept;
     SubscriberImpl(const SubscriberImpl& other) = delete;
     SubscriberImpl& operator=(const SubscriberImpl&) = delete;
     SubscriberImpl(SubscriberImpl&& rhs) = delete;

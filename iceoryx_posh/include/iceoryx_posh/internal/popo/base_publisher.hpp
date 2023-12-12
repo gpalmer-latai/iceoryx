@@ -22,6 +22,7 @@
 #include "iceoryx_posh/popo/sample.hpp"
 #include "iox/expected.hpp"
 #include "iox/optional.hpp"
+#include "iox/function.hpp"
 
 namespace iox
 {
@@ -82,7 +83,9 @@ class BasePublisher
 
   protected:
     BasePublisher() = default; // Required for testing.
-    BasePublisher(const capro::ServiceDescription& service, const PublisherOptions& publisherOptions);
+    BasePublisher(const capro::ServiceDescription& service, 
+                  const PublisherOptions& publisherOptions,
+                  const function<void(const mepoo::SegmentManager<>::SegmentMapping&)>& post_init = [](const auto&){});
 
     ///
     /// @brief port

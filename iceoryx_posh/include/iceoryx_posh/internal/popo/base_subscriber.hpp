@@ -113,7 +113,9 @@ class BaseSubscriber
     using PortType = port_t;
 
     BaseSubscriber() noexcept; // Required for testing.
-    BaseSubscriber(const capro::ServiceDescription& service, const SubscriberOptions& subscriberOptions) noexcept;
+    BaseSubscriber(const capro::ServiceDescription& service, 
+                   const SubscriberOptions& subscriberOptions,
+                   const function<void(const mepoo::SegmentManager<>::SegmentMapping&)>& post_init = [](const auto&){}) noexcept;
 
     BaseSubscriber(const BaseSubscriber& other) = delete;
     BaseSubscriber& operator=(const BaseSubscriber&) = delete;

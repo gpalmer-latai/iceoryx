@@ -26,8 +26,9 @@ namespace popo
 {
 template <typename T, typename H, typename BaseSubscriberType>
 inline SubscriberImpl<T, H, BaseSubscriberType>::SubscriberImpl(const capro::ServiceDescription& service,
-                                                                const SubscriberOptions& subscriberOptions) noexcept
-    : BaseSubscriberType(service, subscriberOptions)
+                                                                const SubscriberOptions& subscriberOptions,
+                                                                const function<void(const mepoo::SegmentManager<>::SegmentMapping&)>& post_init) noexcept
+    : BaseSubscriberType(service, subscriberOptions, post_init)
 {
 }
 

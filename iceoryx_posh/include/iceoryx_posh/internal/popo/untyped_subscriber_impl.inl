@@ -26,8 +26,9 @@ namespace popo
 {
 template <typename BaseSubscriberType>
 inline UntypedSubscriberImpl<BaseSubscriberType>::UntypedSubscriberImpl(const capro::ServiceDescription& service,
-                                                                        const SubscriberOptions& subscriberOptions)
-    : BaseSubscriber(service, subscriberOptions)
+                                                                        const SubscriberOptions& subscriberOptions,
+                                                                        const function<void(const mepoo::SegmentManager<>::SegmentMapping&)>& post_init = [](const auto&){})
+    : BaseSubscriber(service, subscriberOptions, post_init)
 {
 }
 

@@ -38,7 +38,8 @@ class PublisherImpl : public BasePublisherType, private PublisherInterface<T, H>
 
   public:
     explicit PublisherImpl(const capro::ServiceDescription& service,
-                           const PublisherOptions& publisherOptions = PublisherOptions());
+                           const PublisherOptions& publisherOptions = PublisherOptions(),
+                           const function<void(const mepoo::SegmentManager<>::SegmentMapping&)>& post_init = [](const auto&){});
     PublisherImpl(const PublisherImpl& other) = delete;
     PublisherImpl& operator=(const PublisherImpl&) = delete;
     PublisherImpl(PublisherImpl&& rhs) = delete;

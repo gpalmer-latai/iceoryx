@@ -33,8 +33,9 @@ inline BaseSubscriber<port_t>::BaseSubscriber() noexcept
 
 template <typename port_t>
 inline BaseSubscriber<port_t>::BaseSubscriber(const capro::ServiceDescription& service,
-                                              const SubscriberOptions& subscriberOptions) noexcept
-    : m_port(iox::runtime::PoshRuntime::getInstance().getMiddlewareSubscriber(service, subscriberOptions))
+                                              const SubscriberOptions& subscriberOptions,
+                                              const function<void(const mepoo::SegmentManager<>::SegmentMapping&)>& post_init) noexcept
+    : m_port(iox::runtime::PoshRuntime::getInstance().getMiddlewareSubscriber(service, subscriberOptions, {}, post_init))
 {
 }
 

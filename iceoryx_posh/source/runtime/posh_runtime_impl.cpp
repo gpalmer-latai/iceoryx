@@ -44,6 +44,9 @@ PoshRuntimeImpl::PoshRuntimeImpl(optional<const RuntimeName_t*> name, const Runt
                                                  m_ipcChannelInterface.getSegmentId(),
                                                  m_ipcChannelInterface.getSegmentManagerAddressOffset()});
     }())
+    // When the runtime is located in a separate process from RouDi, the ShmInterface must be created first
+    // in order to register the segment id for the segment manager and the segments it manages.
+    , m_SegmentManager(m_ipcChannelInterface.getSegmentId(), m_ipcChannelInterface.getSegmentManagerAddressOffset())
 {
     MutexBuilder()
         .isInterProcessCapable(false)
@@ -98,7 +101,8 @@ PoshRuntimeImpl::~PoshRuntimeImpl() noexcept
 PublisherPortUserType::MemberType_t*
 PoshRuntimeImpl::getMiddlewarePublisher(const capro::ServiceDescription& service,
                                         const popo::PublisherOptions& publisherOptions,
-                                        const PortConfigInfo& portConfigInfo) noexcept
+                                        const PortConfigInfo& portConfigInfo,
+                                        const function<void(const mepoo::SegmentManager<>::SegmentMapping&)>& post_init) noexcept
 {
     constexpr uint64_t MAX_HISTORY_CAPACITY =
         PublisherPortUserType::MemberType_t::ChunkSenderData_t::ChunkDistributorDataProperties_t::MAX_HISTORY_CAPACITY;
@@ -168,6 +172,16 @@ PoshRuntimeImpl::getMiddlewarePublisher(const capro::ServiceDescription& service
         }
         return nullptr;
     }
+    for (const auto& segment : m_segmentManager->getSegmentMappings(PosixUser::getUserOfCurrentProcess()))
+    {
+        if (segment.m_isWritable)
+        {
+            if (publisherOptions.shmName.empty() || publisherOptions.shmName == segment.m_shmName)
+            {
+                post_init(segment);
+            }
+        }
+    }
     return maybePublisher.value();
 }
 
@@ -213,7 +227,8 @@ PoshRuntimeImpl::requestPublisherFromRoudi(const IpcMessage& sendBuffer) noexcep
 SubscriberPortUserType::MemberType_t*
 PoshRuntimeImpl::getMiddlewareSubscriber(const capro::ServiceDescription& service,
                                          const popo::SubscriberOptions& subscriberOptions,
-                                         const PortConfigInfo& portConfigInfo) noexcept
+                                         const PortConfigInfo& portConfigInfo,
+                                         const function<void(const mepoo::SegmentManager<>::SegmentMapping&)>& post_init) noexcept
 {
     constexpr uint64_t MAX_QUEUE_CAPACITY = SubscriberPortUserType::MemberType_t::ChunkQueueData_t::MAX_CAPACITY;
 
@@ -280,6 +295,13 @@ PoshRuntimeImpl::getMiddlewareSubscriber(const capro::ServiceDescription& servic
             break;
         }
         return nullptr;
+    }
+    for (const auto& segment : m_segmentManager->getSegmentMappings(PosixUser::getUserOfCurrentProcess()))
+    {
+        if (subscriberOptions.shmName.empty() || subscriberOptions.shmName == segment.m_shmName)
+        {
+            post_init(segment);
+        }
     }
     return maybeSubscriber.value();
 }

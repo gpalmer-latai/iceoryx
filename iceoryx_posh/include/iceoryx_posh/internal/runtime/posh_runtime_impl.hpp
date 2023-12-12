@@ -49,13 +49,15 @@ class PoshRuntimeImpl : public PoshRuntime
     PublisherPortUserType::MemberType_t*
     getMiddlewarePublisher(const capro::ServiceDescription& service,
                            const popo::PublisherOptions& publisherOptions = popo::PublisherOptions(),
-                           const PortConfigInfo& portConfigInfo = PortConfigInfo()) noexcept override;
+                           const PortConfigInfo& portConfigInfo = PortConfigInfo(),
+                           const function<void(const mepoo::SegmentManager<>::SegmentMapping&)>& post_init = [](const auto&){}) noexcept override;
 
     /// @copydoc PoshRuntime::getMiddlewareSubscriber
     SubscriberPortUserType::MemberType_t*
     getMiddlewareSubscriber(const capro::ServiceDescription& service,
                             const popo::SubscriberOptions& subscriberOptions = popo::SubscriberOptions(),
-                            const PortConfigInfo& portConfigInfo = PortConfigInfo()) noexcept override;
+                            const PortConfigInfo& portConfigInfo = PortConfigInfo(),
+                            const function<void(const mepoo::SegmentManager<>::SegmentMapping&)>& post_init = [](const auto&){}) noexcept override;
 
     /// @copydoc PoshRuntime::getMiddlewareClient
     popo::ClientPortUser::MemberType_t*
@@ -110,6 +112,7 @@ class PoshRuntimeImpl : public PoshRuntime
 
     IpcRuntimeInterface m_ipcChannelInterface;
     optional<SharedMemoryUser> m_ShmInterface;
+    RelativePointer<mepoo::SegmentManager<>> m_SegmentManager;
 
     optional<Heartbeat*> m_heartbeat;
     void sendKeepAliveAndHandleShutdownPreparation() noexcept;
