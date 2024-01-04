@@ -1,4 +1,5 @@
 // Copyright (c) 2023 by Mathias Kraus <elboberido@m-hias.de>. All rights reserved.
+// Copyright (c) 2024 by Latitude AI. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,7 +27,7 @@ RouDiConfig_t MinimalRouDiConfigBuilder::create() const noexcept
     mepoo::MePooConfig mepooConfig;
     mepooConfig.addMemPool({m_payloadChunkSize, m_payloadChunkCount});
     auto currentGroup = PosixGroup::getGroupOfCurrentProcess();
-    roudiConfig.m_sharedMemorySegments.push_back({currentGroup.getName(), currentGroup.getName(), mepooConfig});
+    roudiConfig.m_sharedMemorySegments.emplace_back(currentGroup.getName(), currentGroup.getName(), currentGroup.getName(), mepooConfig);
 
     roudiConfig.introspectionChunkCount = m_introspectionChunkCount;
     roudiConfig.discoveryChunkCount = m_discoveryChunkCount;

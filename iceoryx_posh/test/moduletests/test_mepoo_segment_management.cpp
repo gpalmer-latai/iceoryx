@@ -1,5 +1,6 @@
 // Copyright (c) 2019 by Robert Bosch GmbH. All rights reserved.
 // Copyright (c) 2021 - 2022 by Apex.AI Inc. All rights reserved.
+// Copyright (c) 2024 by Latitude AI. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -68,16 +69,16 @@ class SegmentManager_test : public Test
     SegmentConfig getSegmentConfig()
     {
         SegmentConfig config;
-        config.m_sharedMemorySegments.push_back({"iox_roudi_test1", "iox_roudi_test2", mepooConfig});
-        config.m_sharedMemorySegments.push_back({"iox_roudi_test2", "iox_roudi_test3", mepooConfig});
+        config.m_sharedMemorySegments.emplace_back("segment_name1", "iox_roudi_test1", "iox_roudi_test2", mepooConfig);
+        config.m_sharedMemorySegments.emplace_back("segment_name2", "iox_roudi_test2", "iox_roudi_test3", mepooConfig);
         return config;
     }
 
     SegmentConfig getInvalidSegmentConfig()
     {
         SegmentConfig config;
-        config.m_sharedMemorySegments.push_back({"iox_roudi_test1", "iox_roudi_test1", mepooConfig});
-        config.m_sharedMemorySegments.push_back({"iox_roudi_test3", "iox_roudi_test1", mepooConfig});
+        config.m_sharedMemorySegments.emplace_back("segment_name1", "iox_roudi_test1", "iox_roudi_test1", mepooConfig);
+        config.m_sharedMemorySegments.emplace_back("segment_name2", "iox_roudi_test3", "iox_roudi_test1", mepooConfig);
         return config;
     }
 
@@ -86,7 +87,7 @@ class SegmentManager_test : public Test
         SegmentConfig config;
         for (uint64_t i = 0U; i < iox::MAX_SHM_SEGMENTS; ++i)
         {
-            config.m_sharedMemorySegments.push_back({"iox_roudi_test1", "iox_roudi_test1", mepooConfig});
+            config.m_sharedMemorySegments.emplace_back("segment_name1", "iox_roudi_test1", "iox_roudi_test1", mepooConfig);
         }
         return config;
     }

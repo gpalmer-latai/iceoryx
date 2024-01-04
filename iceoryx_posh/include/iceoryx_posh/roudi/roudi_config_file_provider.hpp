@@ -1,5 +1,6 @@
 // Copyright (c) 2019 by Robert Bosch GmbH. All rights reserved.
 // Copyright (c) 2021 by Apex.AI Inc. All rights reserved.
+// Copyright (c) 2024 by Latitude AI. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,6 +36,8 @@ namespace roudi
 /// MAX_NUMBER_OF_MEMPOOLS_PER_SEGMENT_EXCEEDED - the max number of mempools per segment is exceeded
 /// MEMPOOL_WITHOUT_CHUNK_SIZE - chunk size not specified for the mempool
 /// MEMPOOL_WITHOUT_CHUNK_COUNT - chunk count not specified for the mempool
+/// EXCEPTION_IN_PARSER - An exception occurred in the toml file parsing library
+/// NAMED_SEGMENT_IN_V1_CONFIG - A segment name was specified in a v1 config
 enum class RouDiConfigFileParseError
 {
     FILE_OPEN_FAILED,
@@ -46,7 +49,11 @@ enum class RouDiConfigFileParseError
     MAX_NUMBER_OF_MEMPOOLS_PER_SEGMENT_EXCEEDED,
     MEMPOOL_WITHOUT_CHUNK_SIZE,
     MEMPOOL_WITHOUT_CHUNK_COUNT,
-    EXCEPTION_IN_PARSER
+    EXCEPTION_IN_PARSER,
+    NAMED_SEGMENT_IN_V1_CONFIG,
+    SEGMENT_NAME_EXCEEDS_MAX_LENGTH,
+    WRITER_GROUP_NAME_EXCEEDS_MAX_LENGTH,
+    READER_GROUP_NAME_EXCEEDS_MAX_LENGTH
 };
 
 constexpr const char* ROUDI_CONFIG_FILE_PARSE_ERROR_STRINGS[] = {"FILE_OPEN_FAILED",
@@ -58,7 +65,11 @@ constexpr const char* ROUDI_CONFIG_FILE_PARSE_ERROR_STRINGS[] = {"FILE_OPEN_FAIL
                                                                  "MAX_NUMBER_OF_MEMPOOLS_PER_SEGMENT_EXCEEDED",
                                                                  "MEMPOOL_WITHOUT_CHUNK_SIZE",
                                                                  "MEMPOOL_WITHOUT_CHUNK_COUNT",
-                                                                 "EXCEPTION_IN_PARSER"};
+                                                                 "EXCEPTION_IN_PARSER",
+                                                                 "NAMED_SEGMENT_IN_V1_CONFIG",
+                                                                 "SEGMENT_NAME_EXCEEDS_MAX_LENGTH",
+                                                                 "WRITER_GROUP_NAME_EXCEEDS_MAX_LENGTH",
+                                                                 "READER_GROUP_NAME_EXCEEDS_MAX_LENGTH"};
 
 /// @brief Base class for a config file provider.
 class RouDiConfigFileProvider

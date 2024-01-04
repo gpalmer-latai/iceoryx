@@ -1,4 +1,5 @@
 // Copyright (c) 2019 by Robert Bosch GmbH. All rights reserved.
+// Copyright (c) 2024 by Latitude AI. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,11 +32,13 @@ struct SegmentConfig
 {
     struct SegmentEntry
     {
-        SegmentEntry(const PosixGroup::groupName_t& readerGroup,
+        SegmentEntry(const ShmName_t& name,
+                     const PosixGroup::groupName_t& readerGroup,
                      const PosixGroup::groupName_t& writerGroup,
                      const MePooConfig& memPoolConfig,
                      iox::mepoo::MemoryInfo memoryInfo = iox::mepoo::MemoryInfo()) noexcept
-            : m_readerGroup(readerGroup)
+            : m_name(name)
+            , m_readerGroup(readerGroup)
             , m_writerGroup(writerGroup)
             , m_mempoolConfig(memPoolConfig)
             , m_memoryInfo(memoryInfo)
@@ -43,6 +46,7 @@ struct SegmentConfig
         {
         }
 
+        ShmName_t m_name;
         PosixGroup::groupName_t m_readerGroup;
         PosixGroup::groupName_t m_writerGroup;
         MePooConfig m_mempoolConfig;

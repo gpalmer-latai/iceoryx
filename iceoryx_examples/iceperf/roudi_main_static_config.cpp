@@ -1,4 +1,5 @@
 // Copyright (c) 2021 by Apex.AI Inc. All rights reserved.
+// Copyright (c) 2024 by Latitude AI. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -53,19 +54,17 @@ int main(int argc, char* argv[])
     auto currentGroup = iox::PosixGroup::getGroupOfCurrentProcess();
 
     /// Create an Entry for a new Shared Memory Segment from the MempoolConfig and add it to the RouDiConfig
-    roudiConfig.m_sharedMemorySegments.push_back({currentGroup.getName(), currentGroup.getName(), mepooConfig});
+    roudiConfig.m_sharedMemorySegments.emplace_back(currentGroup.getName(), currentGroup.getName(), currentGroup.getName(), mepooConfig);
 
     /// For the case that you want to give accessrights to the shm segments, you need to set groupnames as fixed string.
     /// These names defines groups whose members are either to read/write from/to the respective shared memory segment.
     /// @note the groups needs to be registered in /etc/groups.
     /// @code
-    /// iox::PosixGroup::string_t readerGroup{iox::TruncateToCapacity, "readerGroup"};
-    /// iox::PosixGroup::string_t writerGroup{iox::TruncateToCapacity, "writerGroup"};
-    /// iox::mepoo::SegmentConfig::SegmentEntry segentry({readerGroup, writerGroup, mepooConfig});
-    /// roudiConfig.m_sharedMemorySegments.push_back(
-    /// {iox::PosixGroup::string_t(iox::TruncateToCapacity, reader),
-    ///  iox::PosixGroup::string_t(iox::TruncateToCapacity, writer),
-    ///  mempoolConfig})
+    /// roudiConfig.m_sharedMemorySegments.emplace_back(
+    /// "segmentName", 
+    /// "readerGroup",
+    /// "writerGroup",
+    ///  mempoolConfig)
     /// @endcode
 
     /// configure the chunk count for the introspection; each introspection topic gets this number of chunks
