@@ -1,5 +1,6 @@
 // Copyright (c) 2019 by Robert Bosch GmbH. All rights reserved.
 // Copyright (c) 2021 - 2022 by Apex.AI Inc. All rights reserved.
+// Copyright (c) 2024 by Latitude AI. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -54,12 +55,12 @@ class SegmentManager
     struct SegmentMapping
     {
       public:
-        SegmentMapping(const ShmName_t& sharedMemoryName,
+        SegmentMapping(const ShmName_t& name,
                        uint64_t size,
                        bool isWritable,
                        uint64_t segmentId,
                        const iox::mepoo::MemoryInfo& memoryInfo = iox::mepoo::MemoryInfo()) noexcept
-            : m_sharedMemoryName(sharedMemoryName)
+            : m_name(name)
             , m_size(size)
             , m_isWritable(isWritable)
             , m_segmentId(segmentId)
@@ -68,7 +69,7 @@ class SegmentManager
         {
         }
 
-        ShmName_t m_sharedMemoryName{""};
+        ShmName_t m_name{""};
         uint64_t m_size{0};
         bool m_isWritable{false};
         uint64_t m_segmentId{0};

@@ -1,6 +1,7 @@
 // Copyright (c) 2019 by Robert Bosch GmbH. All rights reserved.
 // Copyright (c) 2021 by Apex.AI Inc. All rights reserved.
 // Copyright (c) 2023 by Mathias Kraus <elboberido@m-hias.de>. All rights reserved.
+// Copyright (c) 2024 by Latitude AI. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,7 +36,8 @@ template <typename SharedMemoryObjectType = PosixSharedMemoryObject, typename Me
 class MePooSegment
 {
   public:
-    MePooSegment(const MePooConfig& mempoolConfig,
+    MePooSegment(const ShmName_t& name,
+                 const MePooConfig& mempoolConfig,
                  BumpAllocator& managementAllocator,
                  const PosixGroup& readerGroup,
                  const PosixGroup& writerGroup,
@@ -46,15 +48,21 @@ class MePooSegment
 
     MemoryManagerType& getMemoryManager() noexcept;
 
+    /// @brief Get the name of the shared memory segment.
+    /// @details The name is propogated to the shared memory object and used to create
+    ///          the underlying file descriptor at /dev/shm/<name>.
+    const ShmName_t& getSegmentName() const noexcept;
+
     uint64_t getSegmentId() const noexcept;
 
     uint64_t getSegmentSize() const noexcept;
 
   protected:
     SharedMemoryObjectType createSharedMemoryObject(const MePooConfig& mempoolConfig,
-                                                    const PosixGroup& writerGroup) noexcept;
+                                                    const ShmName_t& name) noexcept;
 
   protected:
+    ShmName_t m_name;
     PosixGroup m_readerGroup;
     PosixGroup m_writerGroup;
     uint64_t m_segmentId{0};

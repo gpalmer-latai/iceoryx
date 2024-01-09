@@ -1,5 +1,6 @@
 // Copyright (c) 2019 - 2020 by Robert Bosch GmbH. All rights reserved.
 // Copyright (c) 2020 - 2022 by Apex.AI Inc. All rights reserved.
+// Copyright (c) 2024 by Latitude AI. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -111,9 +112,9 @@ namespace iox
     error(MEPOO__MEMPOOL_GETCHUNK_POOL_IS_RUNNING_OUT_OF_CHUNKS) \
     error(MEPOO__MEMPOOL_CHUNKSIZE_MUST_BE_MULTIPLE_OF_CHUNK_MEMORY_ALIGNMENT) \
     error(MEPOO__MEMPOOL_ADDMEMPOOL_AFTER_GENERATECHUNKMANAGEMENTPOOL) \
+    error(MEPOO__MULTIPLE_SEGMENT_CONFIG_ENTRIES_WITH_SAME_NAME) \
     error(MEPOO__TYPED_MEMPOOL_HAS_INCONSISTENT_STATE) \
     error(MEPOO__TYPED_MEMPOOL_MANAGEMENT_SEGMENT_IS_BROKEN) \
-    error(MEPOO__USER_WITH_MORE_THAN_ONE_WRITE_SEGMENT) \
     error(MEPOO__SEGMENT_COULD_NOT_APPLY_POSIX_RIGHTS_TO_SHARED_MEMORY) \
     error(MEPOO__SEGMENT_UNABLE_TO_CREATE_SHARED_MEMORY_OBJECT) \
     error(MEPOO__SEGMENT_INSUFFICIENT_SEGMENT_IDS) \

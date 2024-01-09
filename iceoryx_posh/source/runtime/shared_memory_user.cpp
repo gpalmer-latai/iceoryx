@@ -73,7 +73,7 @@ void SharedMemoryUser::openDataSegments(const uint64_t segmentId,
     {
         auto accessMode = segment.m_isWritable ? AccessMode::READ_WRITE : AccessMode::READ_ONLY;
         PosixSharedMemoryObjectBuilder()
-            .name(segment.m_sharedMemoryName)
+            .name(segment.m_name)
             .memorySizeInBytes(segment.m_size)
             .accessMode(accessMode)
             .openMode(OpenMode::OPEN_EXISTING)

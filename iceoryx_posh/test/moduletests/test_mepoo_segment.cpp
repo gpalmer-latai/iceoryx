@@ -1,6 +1,7 @@
 // Copyright (c) 2019 by Robert Bosch GmbH. All rights reserved.
 // Copyright (c) 2021 - 2022 by Apex.AI Inc. All rights reserved.
 // Copyright (c) 2023 by Mathias Kraus <elboberido@m-hias.de>. All rights reserved.
+// Copyright (c) 2024 by Latitude AI. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -138,7 +139,7 @@ class MePooSegment_test : public Test
     std::unique_ptr<SUT> createSut()
     {
         return std::make_unique<SUT>(
-            mepooConfig, m_managementAllocator, PosixGroup{"iox_roudi_test1"}, PosixGroup{"iox_roudi_test2"});
+            "segment_name", mepooConfig, m_managementAllocator, PosixGroup{"iox_roudi_test1"}, PosixGroup{"iox_roudi_test2"});
     }
 };
 MePooSegment_test::SharedMemoryObject_MOCK::createFct MePooSegment_test::SharedMemoryObject_MOCK::createVerificator;
@@ -160,13 +161,21 @@ TEST_F(MePooSegment_test, SharedMemoryCreationParameter)
                                                                        const iox::OpenMode openMode,
                                                                        const void*,
                                                                        const iox::access_rights) {
-        EXPECT_THAT(f_name, Eq(detail::PosixSharedMemory::Name_t("iox_roudi_test2")));
+        EXPECT_THAT(f_name.c_str(), StrEq(detail::PosixSharedMemory::Name_t("segment_name").c_str()));
         EXPECT_THAT(f_accessMode, Eq(iox::AccessMode::READ_WRITE));
         EXPECT_THAT(openMode, Eq(iox::OpenMode::PURGE_AND_CREATE));
     };
-    SUT sut{mepooConfig, m_managementAllocator, PosixGroup{"iox_roudi_test1"}, PosixGroup{"iox_roudi_test2"}};
+    SUT sut{"segment_name", mepooConfig, m_managementAllocator, PosixGroup{"iox_roudi_test1"}, PosixGroup{"iox_roudi_test2"}};
     MePooSegment_test::SharedMemoryObject_MOCK::createVerificator =
         MePooSegment_test::SharedMemoryObject_MOCK::createFct();
+}
+
+TEST_F(MePooSegment_test, GetSegmentName)
+{
+    ::testing::Test::RecordProperty("TEST_ID", "3508ab9c-a59b-48e4-a3f9-da9c0a2742e6");
+
+    auto sut = createSut();
+    EXPECT_THAT(sut->getSegmentName(), Eq(iox::ShmName_t("segment_name")));
 }
 
 TEST_F(MePooSegment_test, GetSegmentSize)

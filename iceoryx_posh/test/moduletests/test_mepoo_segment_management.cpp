@@ -23,6 +23,7 @@
 #include "iceoryx_posh/mepoo/mepoo_config.hpp"
 #include "iceoryx_posh/mepoo/segment_config.hpp"
 #include "iox/bump_allocator.hpp"
+#include "iox/detail/serialization.hpp"
 #include "iox/posix_group.hpp"
 #include "iox/posix_shared_memory_object.hpp"
 #include "iox/posix_user.hpp"
@@ -38,13 +39,23 @@ using namespace iox::mepoo;
 class MePooSegmentMock
 {
   public:
-    MePooSegmentMock(const MePooConfig& mempoolConfig [[maybe_unused]],
+    MePooSegmentMock(const ShmName_t& name,
+                     const MePooConfig& mempoolConfig [[maybe_unused]],
                      iox::BumpAllocator& managementAllocator [[maybe_unused]],
                      const PosixGroup& readerGroup [[maybe_unused]],
                      const PosixGroup& writerGroup [[maybe_unused]],
                      const MemoryInfo& memoryInfo [[maybe_unused]]) noexcept
+    : m_name(name)
     {
     }
+
+    const ShmName_t& getSegmentName() const noexcept
+    {
+        return m_name;
+    }
+    
+  private:
+    ShmName_t m_name;
 };
 
 class SegmentManager_test : public Test
@@ -70,15 +81,15 @@ class SegmentManager_test : public Test
     {
         SegmentConfig config;
         config.m_sharedMemorySegments.emplace_back("segment_name1", "iox_roudi_test1", "iox_roudi_test2", mepooConfig);
-        config.m_sharedMemorySegments.emplace_back("segment_name2", "iox_roudi_test2", "iox_roudi_test3", mepooConfig);
+        config.m_sharedMemorySegments.emplace_back("segment_name2", "iox_roudi_test3", "iox_roudi_test2", mepooConfig);
         return config;
     }
 
-    SegmentConfig getInvalidSegmentConfig()
+    SegmentConfig getSegmentConfigWithSameNameEntries()
     {
         SegmentConfig config;
-        config.m_sharedMemorySegments.emplace_back("segment_name1", "iox_roudi_test1", "iox_roudi_test1", mepooConfig);
-        config.m_sharedMemorySegments.emplace_back("segment_name2", "iox_roudi_test3", "iox_roudi_test1", mepooConfig);
+        config.m_sharedMemorySegments.emplace_back("duplicate_name", "iox_roudi_test1", "iox_roudi_test2", mepooConfig);
+        config.m_sharedMemorySegments.emplace_back("duplicate_name", "iox_roudi_test2", "iox_roudi_test3", mepooConfig);
         return config;
     }
 
@@ -87,7 +98,8 @@ class SegmentManager_test : public Test
         SegmentConfig config;
         for (uint64_t i = 0U; i < iox::MAX_SHM_SEGMENTS; ++i)
         {
-            config.m_sharedMemorySegments.emplace_back("segment_name1", "iox_roudi_test1", "iox_roudi_test1", mepooConfig);
+            auto serial = Serialization::create("segment_name", i);
+            config.m_sharedMemorySegments.emplace_back(ShmName_t(TruncateToCapacity, serial.toString().c_str()), "iox_roudi_test1", "iox_roudi_test1", mepooConfig);
         }
         return config;
     }
@@ -124,7 +136,7 @@ TEST_F(SegmentManager_test, getSegmentMappingsForWriteUser)
     auto sut = createSut();
     auto mapping = sut->getSegmentMappings(PosixUser{"iox_roudi_test2"});
     ASSERT_THAT(mapping.size(), Eq(2u));
-    EXPECT_THAT(mapping[0].m_isWritable == mapping[1].m_isWritable, Eq(false));
+    EXPECT_THAT(mapping[0].m_isWritable == mapping[1].m_isWritable, Eq(true));
 }
 
 TEST_F(SegmentManager_test, getSegmentMappingsEmptyForNonRegisteredUser)
@@ -182,13 +194,12 @@ TEST_F(SegmentManager_test, getMemoryManagerForUserFailWithNonExistingUser)
     EXPECT_FALSE(sut->getSegmentInformationWithWriteAccessForUser(PosixUser{"no_user"}).m_memoryManager.has_value());
 }
 
-TEST_F(SegmentManager_test, addingMoreThanOneWriterGroupFails)
+TEST_F(SegmentManager_test, addingMoreThanOneEntryWithSameNameFails)
 {
-    ::testing::Test::RecordProperty("TEST_ID", "3fa29560-7341-43bf-a22e-2d3550b49e4e");
+    ::testing::Test::RecordProperty("TEST_ID", "7ab2a78a-c9de-4e1d-a2da-6381f9a5a730");
     GTEST_SKIP_FOR_ADDITIONAL_USER() << "This test requires the -DTEST_WITH_ADDITIONAL_USER=ON cmake argument";
 
-    SegmentConfig segmentConfig = getInvalidSegmentConfig();
-    SUT sut{segmentConfig, &allocator};
+    SegmentConfig segmentConfig = getSegmentConfigWithSameNameEntries();
 
     iox::optional<iox::PoshError> detectedError;
     auto errorHandlerGuard = iox::ErrorHandlerMock::setTemporaryErrorHandler<iox::PoshError>(
@@ -197,10 +208,10 @@ TEST_F(SegmentManager_test, addingMoreThanOneWriterGroupFails)
             EXPECT_THAT(errorLevel, Eq(iox::ErrorLevel::FATAL));
         });
 
-    sut.getSegmentMappings(PosixUser("iox_roudi_test1"));
+    SUT sut{segmentConfig, &allocator};
 
     ASSERT_TRUE(detectedError.has_value());
-    EXPECT_THAT(detectedError.value(), Eq(iox::PoshError::MEPOO__USER_WITH_MORE_THAN_ONE_WRITE_SEGMENT));
+    EXPECT_THAT(detectedError.value(), Eq(iox::PoshError::MEPOO__MULTIPLE_SEGMENT_CONFIG_ENTRIES_WITH_SAME_NAME));
 }
 
 TEST_F(SegmentManager_test, addingMaximumNumberOfSegmentsWorks)
