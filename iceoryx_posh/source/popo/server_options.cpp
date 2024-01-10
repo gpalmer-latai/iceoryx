@@ -1,4 +1,5 @@
 // Copyright (c) 2021 - 2022 by Apex.AI Inc. All rights reserved.
+// Copyright (c) 2024 by Latitude AI. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,6 +27,7 @@ Serialization ServerOptions::serialize() const noexcept
     return Serialization::create(requestQueueCapacity,
                                  nodeName,
                                  offerOnCreate,
+                                 responseSegmentName,
                                  static_cast<std::underlying_type_t<QueueFullPolicy>>(requestQueueFullPolicy),
                                  static_cast<std::underlying_type_t<ConsumerTooSlowPolicy>>(clientTooSlowPolicy));
 }
@@ -42,6 +44,7 @@ expected<ServerOptions, Serialization::Error> ServerOptions::deserialize(const S
     auto deserializationSuccessful = serialized.extract(serverOptions.requestQueueCapacity,
                                                         serverOptions.nodeName,
                                                         serverOptions.offerOnCreate,
+                                                        serverOptions.responseSegmentName,
                                                         requestQueueFullPolicy,
                                                         clientTooSlowPolicy);
 
@@ -61,7 +64,8 @@ expected<ServerOptions, Serialization::Error> ServerOptions::deserialize(const S
 bool ServerOptions::operator==(const ServerOptions& rhs) const noexcept
 {
     return requestQueueCapacity == rhs.requestQueueCapacity && nodeName == rhs.nodeName
-           && offerOnCreate == rhs.offerOnCreate && requestQueueFullPolicy == rhs.requestQueueFullPolicy
+           && offerOnCreate == rhs.offerOnCreate && responseSegmentName == rhs.responseSegmentName
+           && requestQueueFullPolicy == rhs.requestQueueFullPolicy
            && clientTooSlowPolicy == rhs.clientTooSlowPolicy;
 }
 } // namespace popo

@@ -1,4 +1,5 @@
 // Copyright (c) 2021 - 2022 by Apex.AI Inc. All rights reserved.
+// Copyright (c) 2024 by Latitude AI. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,6 +33,7 @@ TEST(ClientOptions_test, SerializationRoundTripIsSuccessful)
     testOptions.responseQueueCapacity = 42;
     testOptions.nodeName = "hypnotoad";
     testOptions.connectOnCreate = false;
+    testOptions.requestSegmentName = "gdpr-noncompliant-data";
     testOptions.responseQueueFullPolicy = iox::popo::QueueFullPolicy::BLOCK_PRODUCER;
     testOptions.serverTooSlowPolicy = iox::popo::ConsumerTooSlowPolicy::WAIT_FOR_CONSUMER;
 
@@ -45,6 +47,9 @@ TEST(ClientOptions_test, SerializationRoundTripIsSuccessful)
 
             EXPECT_THAT(roundTripOptions.connectOnCreate, Ne(defaultOptions.connectOnCreate));
             EXPECT_THAT(roundTripOptions.connectOnCreate, Eq(testOptions.connectOnCreate));
+
+            EXPECT_THAT(roundTripOptions.requestSegmentName, Ne(defaultOptions.requestSegmentName));
+            EXPECT_THAT(roundTripOptions.requestSegmentName, Eq(testOptions.requestSegmentName));
 
             EXPECT_THAT(roundTripOptions.responseQueueFullPolicy, Ne(defaultOptions.responseQueueFullPolicy));
             EXPECT_THAT(roundTripOptions.responseQueueFullPolicy, Eq(testOptions.responseQueueFullPolicy));
@@ -81,9 +86,10 @@ iox::Serialization enumSerialization(QueueFullPolicyUT responseQueueFullPolicy,
     constexpr uint64_t RESPONSE_QUEUE_CAPACITY{42U};
     const iox::NodeName_t NODE_NAME{"harr-harr"};
     constexpr bool CONNECT_ON_CREATE{true};
+    const iox::ShmName_t SEGMENT_NAME{"ho-ho"};
 
     return iox::Serialization::create(
-        RESPONSE_QUEUE_CAPACITY, NODE_NAME, CONNECT_ON_CREATE, responseQueueFullPolicy, serverTooSlowPolicy);
+        RESPONSE_QUEUE_CAPACITY, NODE_NAME, CONNECT_ON_CREATE, SEGMENT_NAME, responseQueueFullPolicy, serverTooSlowPolicy);
 }
 
 TEST(ClientOptions_test, DeserializingValidResponseQueueFullAndServerTooSlowPolicyIsSuccessful)
@@ -186,6 +192,18 @@ TEST(ClientOptions_test, ComparisonOperatorReturnsFalseWhenConnectOnCreateDoesNo
     options1.connectOnCreate = false;
     ClientOptions options2;
     options2.connectOnCreate = true;
+
+    EXPECT_FALSE(options1 == options2);
+    EXPECT_FALSE(options2 == options1);
+}
+
+TEST(ClientOptions_test, ComparisonOperatorReturnsFalseWhenSegmentNameDoesNotMatch)
+{
+    ::testing::Test::RecordProperty("TEST_ID", "f5434f77-2490-4fc1-9ca7-87fdd26379b7");
+    ClientOptions options1;
+    options1.requestSegmentName= "🙂";
+    ClientOptions options2;
+    options2.requestSegmentName = "🙃";
 
     EXPECT_FALSE(options1 == options2);
     EXPECT_FALSE(options2 == options1);

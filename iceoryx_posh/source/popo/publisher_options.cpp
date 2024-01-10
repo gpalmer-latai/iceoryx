@@ -1,4 +1,5 @@
 // Copyright (c) 2022 by Apex.AI Inc. All rights reserved.
+// Copyright (c) 2024 by Latitude AI. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,6 +27,7 @@ Serialization PublisherOptions::serialize() const noexcept
     return Serialization::create(historyCapacity,
                                  nodeName,
                                  offerOnCreate,
+                                 segmentName,
                                  static_cast<std::underlying_type_t<ConsumerTooSlowPolicy>>(subscriberTooSlowPolicy));
 }
 
@@ -39,6 +41,7 @@ expected<PublisherOptions, Serialization::Error> PublisherOptions::deserialize(c
     auto deserializationSuccessful = serialized.extract(publisherOptions.historyCapacity,
                                                         publisherOptions.nodeName,
                                                         publisherOptions.offerOnCreate,
+                                                        publisherOptions.segmentName,
                                                         subscriberTooSlowPolicy);
 
     if (!deserializationSuccessful

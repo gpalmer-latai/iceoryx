@@ -1,4 +1,5 @@
 // Copyright (c) 2022 by Apex.AI Inc. All rights reserved.
+// Copyright (c) 2024 by Latitude AI. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,6 +32,7 @@ TEST(PublisherOptions_test, SerializationRoundTripIsSuccessful)
     testOptions.historyCapacity = 42;
     testOptions.nodeName = "hypnotoad";
     testOptions.offerOnCreate = false;
+    testOptions.segmentName = "nsa_top_secret_data";
     testOptions.subscriberTooSlowPolicy = iox::popo::ConsumerTooSlowPolicy::WAIT_FOR_CONSUMER;
 
     iox::popo::PublisherOptions::deserialize(testOptions.serialize())
@@ -43,6 +45,9 @@ TEST(PublisherOptions_test, SerializationRoundTripIsSuccessful)
 
             EXPECT_THAT(roundTripOptions.offerOnCreate, Ne(defaultOptions.offerOnCreate));
             EXPECT_THAT(roundTripOptions.offerOnCreate, Eq(testOptions.offerOnCreate));
+
+            EXPECT_THAT(roundTripOptions.segmentName, Ne(defaultOptions.segmentName));
+            EXPECT_THAT(roundTripOptions.segmentName, Eq(testOptions.segmentName));
 
             EXPECT_THAT(roundTripOptions.subscriberTooSlowPolicy, Ne(defaultOptions.subscriberTooSlowPolicy));
             EXPECT_THAT(roundTripOptions.subscriberTooSlowPolicy, Eq(testOptions.subscriberTooSlowPolicy));
@@ -65,10 +70,11 @@ TEST(PublisherOptions_test, DeserializingInvalidSubscriberTooSlowPolicyFails)
     constexpr uint64_t HISTORY_CAPACITY{42U};
     const iox::NodeName_t NODE_NAME{"harr-harr"};
     constexpr bool OFFER_ON_CREATE{true};
+    const iox::ShmName_t SEGMENT_NAME{"ho-ho"};
     constexpr std::underlying_type_t<iox::popo::ConsumerTooSlowPolicy> SUBSCRIBER_TOO_SLOW_POLICY{111};
 
     const auto serialized =
-        iox::Serialization::create(HISTORY_CAPACITY, NODE_NAME, OFFER_ON_CREATE, SUBSCRIBER_TOO_SLOW_POLICY);
+        iox::Serialization::create(HISTORY_CAPACITY, NODE_NAME, OFFER_ON_CREATE, SEGMENT_NAME, SUBSCRIBER_TOO_SLOW_POLICY);
     iox::popo::PublisherOptions::deserialize(serialized)
         .and_then([&](auto&) { GTEST_FAIL() << "Deserialization is expected to fail!"; })
         .or_else([&](auto&) { GTEST_SUCCEED(); });

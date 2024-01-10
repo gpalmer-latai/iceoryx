@@ -1,4 +1,5 @@
 // Copyright (c) 2020 - 2022 by Apex.AI Inc. All rights reserved.
+// Copyright (c) 2024 by Latitude AI. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -40,6 +41,9 @@ struct PublisherOptions
 
     /// @brief The option whether the publisher should already be offered when creating it
     bool offerOnCreate{true};
+
+    /// @brief The name of the shared memory segment in which to publish messages.
+    iox::ShmName_t segmentName{""};
 
     /// @brief The option whether the publisher should block when the subscriber queue is full
     ConsumerTooSlowPolicy subscriberTooSlowPolicy{ConsumerTooSlowPolicy::DISCARD_OLDEST_DATA};
