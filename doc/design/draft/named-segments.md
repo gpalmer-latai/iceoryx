@@ -206,7 +206,7 @@ In order to determine which segments to map:
 
 ## Development Roadmap
 
-- [ ] Extend the RouDi config to support specifying segment names to be added to the `SegmentConfig`
+- [x] Extend the RouDi config to support specifying segment names to be added to the `SegmentConfig`
 - [ ] Add the name to the `MePooSegment` data structure and allow multiple write-access segments to be mapped.
 - [ ] Update producer options structs to include segment names
 - [ ] Update producer segment selection logic to take the segment name into account

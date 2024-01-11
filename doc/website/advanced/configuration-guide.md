@@ -195,7 +195,7 @@ int main(int argc, char* argv[])
     mepooConfig.addMemPool({265, 10000});
 
     auto currentGroup = iox::PosixGroup::getGroupOfCurrentProcess();
-    roudiConfig.m_sharedMemorySegments.push_back({currentGroup.getName(), currentGroup.getName(), mepooConfig});
+    roudiConfig.m_sharedMemorySegments.emplace_back(currentGroup.getName(), currentGroup.getName(), currentGroup.getName(), mepooConfig);
 
     // configure the chunk count for the introspection; each introspection topic gets this number of chunks
     roudiConfig.introspectionChunkCount = 10;

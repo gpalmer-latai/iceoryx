@@ -1,5 +1,6 @@
 // Copyright (c) 2021 by Robert Bosch GmbH. All rights reserved.
 // Copyright (c) 2021 by Apex.AI. All rights reserved.
+// Copyright (c) 2024 by Latitude AI. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -67,7 +68,20 @@ TEST_F(RoudiConfigTomlFileProvider_test, InvalidPathResultsInError)
             [](const auto& error) { EXPECT_THAT(error, Eq(iox::roudi::RouDiConfigFileParseError::FILE_OPEN_FAILED)); });
 }
 
-TEST_F(RoudiConfigTomlFileProvider_test, ParsingFileIsSuccessful)
+constexpr const char* CONFIG_V1_SIMPLE = R"(
+    [general]
+    version = 1
+
+    [[segment]]
+    writer = "writer"
+    reader = "reader"
+
+    [[segment.mempool]]
+    size = 128
+    count = 1
+)";
+
+TEST_F(RoudiConfigTomlFileProvider_test, ParsingV1FileIsSuccessful)
 {
     ::testing::Test::RecordProperty("TEST_ID", "37f5a397-a289-4bc1-86a7-d95851a5ab47");
 
@@ -76,15 +90,44 @@ TEST_F(RoudiConfigTomlFileProvider_test, ParsingFileIsSuccessful)
 
     std::fstream tempFile{tempFilePath, std::ios_base::trunc | std::ios_base::out};
     ASSERT_TRUE(tempFile.is_open());
-    tempFile << R"([general]
-        version = 1
+    tempFile << CONFIG_V1_SIMPLE;
+    tempFile.close();
 
-        [[segment]]
+    cmdLineArgs.configFilePath =
+        iox::roudi::ConfigFilePathString_t(iox::TruncateToCapacity, tempFilePath.u8string().c_str());
 
-        [[segment.mempool]]
-        size = 128
-        count = 1
-    )";
+    iox::config::TomlRouDiConfigFileProvider sut(cmdLineArgs);
+
+    sut.parse().and_then([](const auto&) { GTEST_SUCCEED() << "We got a config!"; }).or_else([](const auto& error) {
+        GTEST_FAIL() << "Expected a config but got error: "
+                     << iox::roudi::ROUDI_CONFIG_FILE_PARSE_ERROR_STRINGS[static_cast<uint64_t>(error)];
+    });
+}
+
+constexpr const char* CONFIG_V2_SIMPLE = R"(
+    [general]
+    version = 2
+
+    [[segment]]
+    name = "name"
+    writer = "writer"
+    reader = "reader"
+    
+    [[segment.mempool]]
+    size = 128
+    count = 1
+)";
+
+TEST_F(RoudiConfigTomlFileProvider_test, ParsingV2FileIsSuccessful)
+{
+    ::testing::Test::RecordProperty("TEST_ID", "f1a7517e-7612-4eb8-84ad-3ff934f64efd");
+
+    auto tempFilePath = std::filesystem::temp_directory_path();
+    tempFilePath.append("test_roudi_config.toml");
+
+    std::fstream tempFile{tempFilePath, std::ios_base::trunc | std::ios_base::out};
+    ASSERT_TRUE(tempFile.is_open());
+    tempFile << CONFIG_V2_SIMPLE;
     tempFile.close();
 
     cmdLineArgs.configFilePath =
@@ -183,6 +226,72 @@ constexpr const char* CONFIG_MEMPOOL_WITHOUT_CHUNK_COUNT = R"(
 
 constexpr const char* CONFIG_EXCEPTION_IN_PARSER = R"(🐔)";
 
+constexpr const char* CONFIG_NAMED_SEGMENT_IN_V1_CONFIG = R"(
+    [general]
+    version = 1
+
+    [[segment]]
+    name = "name"
+    
+    [[segment.mempool]]
+    size = 128
+    count = 1
+)";
+
+const std::string CONFIG_NAME_EXCEEDS_MAX_LENGTH = [] {
+    std::string config = R"(
+        [general]
+        version = 2
+
+        [[segment]]
+    )";
+    config.append("name = \"");
+    config.append(iox::ShmName_t::capacity() + 1, 'f');
+    config.append("\"\n");
+    config.append(R"(
+        [[segment.mempool]]
+        size = 128
+        count = 1
+    )");
+    return config;
+}();
+
+const std::string CONFIG_WRITER_GROUP_EXCEEDS_MAX_LENGTH = [] {
+    std::string config = R"(
+        [general]
+        version = 2
+
+        [[segment]]
+    )";
+    config.append("writer = \"");
+    config.append(iox::PosixGroup::groupName_t::capacity() + 1, 'f');
+    config.append("\"\n");
+    config.append(R"(
+        [[segment.mempool]]
+        size = 128
+        count = 1
+    )");
+    return config;
+}();
+
+const std::string CONFIG_READER_GROUP_EXCEEDS_MAX_LENGTH = [] {
+    std::string config = R"(
+        [general]
+        version = 2
+
+        [[segment]]
+    )";
+    config.append("reader = \"");
+    config.append(iox::PosixGroup::groupName_t::capacity() + 1, 'f');
+    config.append("\"\n");
+    config.append(R"(
+        [[segment.mempool]]
+        size = 128
+        count = 1
+    )");
+    return config;
+}();
+
 INSTANTIATE_TEST_SUITE_P(
     ParseAllMalformedInputConfigFiles,
     RoudiConfigTomlFileProvider_test,
@@ -201,7 +310,15 @@ INSTANTIATE_TEST_SUITE_P(
            ParseErrorInputFile_t{iox::roudi::RouDiConfigFileParseError::MEMPOOL_WITHOUT_CHUNK_COUNT,
                                  CONFIG_MEMPOOL_WITHOUT_CHUNK_COUNT},
            ParseErrorInputFile_t{iox::roudi::RouDiConfigFileParseError::EXCEPTION_IN_PARSER,
-                                 CONFIG_EXCEPTION_IN_PARSER}));
+                                 CONFIG_EXCEPTION_IN_PARSER},
+           ParseErrorInputFile_t{iox::roudi::RouDiConfigFileParseError::NAMED_SEGMENT_IN_V1_CONFIG, 
+                                 CONFIG_NAMED_SEGMENT_IN_V1_CONFIG},
+           ParseErrorInputFile_t{iox::roudi::RouDiConfigFileParseError::SEGMENT_NAME_EXCEEDS_MAX_LENGTH,
+                                 CONFIG_NAME_EXCEEDS_MAX_LENGTH},
+           ParseErrorInputFile_t{iox::roudi::RouDiConfigFileParseError::WRITER_GROUP_NAME_EXCEEDS_MAX_LENGTH,
+                                 CONFIG_WRITER_GROUP_EXCEEDS_MAX_LENGTH},
+           ParseErrorInputFile_t{iox::roudi::RouDiConfigFileParseError::READER_GROUP_NAME_EXCEEDS_MAX_LENGTH,
+                                 CONFIG_READER_GROUP_EXCEEDS_MAX_LENGTH}));
 
 
 TEST_P(RoudiConfigTomlFileProvider_test, ParseMalformedInputFileCausesError)

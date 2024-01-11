@@ -100,8 +100,8 @@ class Mepoo_IntegrationTest : public Test
 
             auto currentGroup = iox::PosixGroup::getGroupOfCurrentProcess();
             iox::RouDiConfig_t roudiConfig;
-            roudiConfig.m_sharedMemorySegments.push_back(
-                {currentGroup.getName(), currentGroup.getName(), mempoolConfig});
+            roudiConfig.m_sharedMemorySegments.emplace_back(
+                currentGroup.getName(), currentGroup.getName(), currentGroup.getName(), mempoolConfig);
             return roudiConfig;
         }
         else

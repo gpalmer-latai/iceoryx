@@ -1,6 +1,7 @@
 // Copyright (c) 2019 by Robert Bosch GmbH. All rights reserved.
 // Copyright (c) 2022 by Apex AI Inc. All rights reserved.
 // Copyright (c) 2022 by NXP. All rights reserved.
+// Copyright (c) 2024 by Latitude AI. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -108,7 +109,7 @@ TomlRouDiConfigFileProvider::parse(std::istream& stream) noexcept
         return iox::err(iox::roudi::RouDiConfigFileParseError::NO_GENERAL_SECTION);
     }
     auto configFileVersion = general->get_as<uint32_t>("version");
-    if (!configFileVersion || *configFileVersion != 1)
+    if (!configFileVersion || *configFileVersion == 0 || *configFileVersion > 2U)
     {
         return iox::err(iox::roudi::RouDiConfigFileParseError::INVALID_CONFIG_FILE_VERSION);
     }
@@ -128,8 +129,29 @@ TomlRouDiConfigFileProvider::parse(std::istream& stream) noexcept
     iox::RouDiConfig_t parsedConfig;
     for (auto segment : *segments)
     {
+        auto maybe_name = segment->get_as<std::string>("name");
+        if (maybe_name && *configFileVersion == 1U)
+        {
+            return iox::err(iox::roudi::RouDiConfigFileParseError::NAMED_SEGMENT_IN_V1_CONFIG);
+        }
+        auto name = maybe_name.value_or(into<std::string>(groupOfCurrentProcess));
+        if (name.size() > ShmName_t::capacity())
+        {
+            return iox::err(iox::roudi::RouDiConfigFileParseError::SEGMENT_NAME_EXCEEDS_MAX_LENGTH);
+        }
+
         auto writer = segment->get_as<std::string>("writer").value_or(into<std::string>(groupOfCurrentProcess));
+        if (writer.size() > PosixGroup::groupName_t::capacity())
+        {
+            return iox::err(iox::roudi::RouDiConfigFileParseError::WRITER_GROUP_NAME_EXCEEDS_MAX_LENGTH);
+        }
+
         auto reader = segment->get_as<std::string>("reader").value_or(into<std::string>(groupOfCurrentProcess));
+        if (reader.size() > PosixGroup::groupName_t::capacity())
+        {
+            return iox::err(iox::roudi::RouDiConfigFileParseError::READER_GROUP_NAME_EXCEEDS_MAX_LENGTH);
+        }
+
         iox::mepoo::MePooConfig mempoolConfig;
         auto mempools = segment->get_table_array("mempool");
         if (!mempools)
@@ -156,10 +178,11 @@ TomlRouDiConfigFileProvider::parse(std::istream& stream) noexcept
             }
             mempoolConfig.addMemPool({*chunkSize, *chunkCount});
         }
-        parsedConfig.m_sharedMemorySegments.push_back(
-            {PosixGroup::groupName_t(iox::TruncateToCapacity, reader.c_str(), reader.size()),
-             PosixGroup::groupName_t(iox::TruncateToCapacity, writer.c_str(), writer.size()),
-             mempoolConfig});
+        parsedConfig.m_sharedMemorySegments.emplace_back(
+            ShmName_t(iox::TruncateToCapacity, name.c_str(), name.size()),
+            PosixGroup::groupName_t(iox::TruncateToCapacity, reader.c_str(), reader.size()),
+            PosixGroup::groupName_t(iox::TruncateToCapacity, writer.c_str(), writer.size()),
+            mempoolConfig);
     }
 
     return iox::ok(parsedConfig);

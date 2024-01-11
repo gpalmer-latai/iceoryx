@@ -1,4 +1,5 @@
 // Copyright (c) 2019 by Robert Bosch GmbH. All rights reserved.
+// Copyright (c) 2024 by Latitude AI. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,7 +25,7 @@ namespace mepoo
 SegmentConfig& SegmentConfig::setDefaults() noexcept
 {
     auto groupName = PosixGroup::getGroupOfCurrentProcess().getName();
-    m_sharedMemorySegments.push_back({groupName, groupName, MePooConfig().setDefaults()});
+    m_sharedMemorySegments.emplace_back(groupName, groupName, groupName, MePooConfig().setDefaults());
     return *this;
 }
 
