@@ -1,4 +1,5 @@
 // Copyright (c) 2021 by Apex.AI Inc. All rights reserved.
+// Copyright (c) 2024 by Latitude AI. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -40,6 +41,9 @@ struct ClientOptions
 
     /// @brief The option whether the client shall try to connect when creating it
     bool connectOnCreate{true};
+
+    /// @brief The name of the shared memory segment in which to create requests.
+    iox::ShmName_t requestSegmentName{""};
 
     /// @brief The option whether the server should block when the response queue is full
     /// @note Corresponds with ServerOptions::clientTooSlowPolicy

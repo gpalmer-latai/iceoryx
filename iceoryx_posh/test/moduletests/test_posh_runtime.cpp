@@ -947,7 +947,7 @@ TEST_F(PoshRuntime_test, ShutdownUnblocksBlockingPublisher)
     iox::capro::ServiceDescription serviceDescription{"don't", "stop", "me"};
 
     iox::popo::PublisherOptions publisherOptions{
-        0U, iox::NodeName_t("node"), true, iox::popo::ConsumerTooSlowPolicy::WAIT_FOR_CONSUMER};
+        0U, iox::NodeName_t("node"), true, "", iox::popo::ConsumerTooSlowPolicy::WAIT_FOR_CONSUMER};
     iox::popo::SubscriberOptions subscriberOptions{
         1U, 0U, iox::NodeName_t("node"), true, iox::popo::QueueFullPolicy::BLOCK_PRODUCER};
 

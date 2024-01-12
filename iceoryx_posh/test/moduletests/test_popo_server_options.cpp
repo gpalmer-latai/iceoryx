@@ -1,4 +1,5 @@
 // Copyright (c) 2021 by Apex.AI Inc. All rights reserved.
+// Copyright (c) 2024 by Latitude AI. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,6 +33,7 @@ TEST(ServerOptions_test, SerializationRoundTripIsSuccessful)
     testOptions.requestQueueCapacity = 42;
     testOptions.nodeName = "hypnotoad";
     testOptions.offerOnCreate = false;
+    testOptions.responseSegmentName = "rejected-cookies";
     testOptions.requestQueueFullPolicy = iox::popo::QueueFullPolicy::BLOCK_PRODUCER;
     testOptions.clientTooSlowPolicy = iox::popo::ConsumerTooSlowPolicy::WAIT_FOR_CONSUMER;
 
@@ -45,6 +47,9 @@ TEST(ServerOptions_test, SerializationRoundTripIsSuccessful)
 
             EXPECT_THAT(roundTripOptions.offerOnCreate, Ne(defaultOptions.offerOnCreate));
             EXPECT_THAT(roundTripOptions.offerOnCreate, Eq(testOptions.offerOnCreate));
+
+            EXPECT_THAT(roundTripOptions.responseSegmentName, Ne(defaultOptions.responseSegmentName));
+            EXPECT_THAT(roundTripOptions.responseSegmentName, Eq(testOptions.responseSegmentName));
 
             EXPECT_THAT(roundTripOptions.requestQueueFullPolicy, Ne(defaultOptions.requestQueueFullPolicy));
             EXPECT_THAT(roundTripOptions.requestQueueFullPolicy, Eq(testOptions.requestQueueFullPolicy));
@@ -72,9 +77,10 @@ iox::Serialization enumSerialization(QueueFullPolicyUT requsetQueueFullPolicy,
     constexpr uint64_t REQUEST_QUEUE_CAPACITY{42U};
     const iox::NodeName_t NODE_NAME{"harr-harr"};
     constexpr bool OFFER_ON_CREATE{true};
+    const iox::ShmName_t SEGMENT_NAME{"ho-ho"};
 
     return iox::Serialization::create(
-        REQUEST_QUEUE_CAPACITY, NODE_NAME, OFFER_ON_CREATE, requsetQueueFullPolicy, clientTooSlowPolicy);
+        REQUEST_QUEUE_CAPACITY, NODE_NAME, OFFER_ON_CREATE, SEGMENT_NAME, requsetQueueFullPolicy, clientTooSlowPolicy);
 }
 
 TEST(ServerOptions_test, DeserializingValidRequestQueueFullPolicyAndClientTooSlowPolicyIsSuccessful)
@@ -159,6 +165,18 @@ TEST(ServerOptions_test, ComparisonOperatorReturnsFalseWhenOfferOnCreateDoesNotM
     options1.offerOnCreate = false;
     ServerOptions options2;
     options2.offerOnCreate = true;
+
+    EXPECT_FALSE(options1 == options2);
+    EXPECT_FALSE(options2 == options1);
+}
+
+TEST(ServerOptions_test, ComparisonOperatorReturnsFalseWhenResponseSegmentNameDoesNotMatch)
+{
+    ::testing::Test::RecordProperty("TEST_ID", "692b602d-b60b-4ab7-ac33-9467e2604a10");
+    ServerOptions options1;
+    options1.responseSegmentName= "(╯°□°)╯︵ ┻━┻";
+    ServerOptions options2;
+    options2.responseSegmentName = "┬─┬ノ( º _ ºノ)";
 
     EXPECT_FALSE(options1 == options2);
     EXPECT_FALSE(options2 == options1);
