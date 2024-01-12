@@ -1,6 +1,7 @@
 // Copyright (c) 2019 by Robert Bosch GmbH. All rights reserved.
 // Copyright (c) 2021 - 2022 by Apex.AI Inc. All rights reserved.
 // Copyright (c) 2023 by Mathias Kraus <elboberido@m-hias.de>. All rights reserved.
+// Copyright (c) 2024 by Latitude AI. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,15 +36,17 @@ constexpr access_rights MePooSegment<SharedMemoryObjectType, MemoryManagerType>:
 
 template <typename SharedMemoryObjectType, typename MemoryManagerType>
 inline MePooSegment<SharedMemoryObjectType, MemoryManagerType>::MePooSegment(
+    const ShmName_t& name,
     const MePooConfig& mempoolConfig,
     BumpAllocator& managementAllocator,
     const PosixGroup& readerGroup,
     const PosixGroup& writerGroup,
     const iox::mepoo::MemoryInfo& memoryInfo) noexcept
-    : m_readerGroup(readerGroup)
+    : m_name(name)
+    , m_readerGroup(readerGroup)
     , m_writerGroup(writerGroup)
     , m_memoryInfo(memoryInfo)
-    , m_sharedMemoryObject(createSharedMemoryObject(mempoolConfig, writerGroup))
+    , m_sharedMemoryObject(createSharedMemoryObject(mempoolConfig, name))
 {
     using namespace detail;
     PosixAcl acl;
@@ -68,11 +71,11 @@ inline MePooSegment<SharedMemoryObjectType, MemoryManagerType>::MePooSegment(
 
 template <typename SharedMemoryObjectType, typename MemoryManagerType>
 inline SharedMemoryObjectType MePooSegment<SharedMemoryObjectType, MemoryManagerType>::createSharedMemoryObject(
-    const MePooConfig& mempoolConfig, const PosixGroup& writerGroup) noexcept
+    const MePooConfig& mempoolConfig, const ShmName_t& name) noexcept
 {
     return std::move(
         typename SharedMemoryObjectType::Builder()
-            .name(writerGroup.getName())
+            .name(name)
             .memorySizeInBytes(MemoryManager::requiredChunkMemorySize(mempoolConfig))
             .accessMode(AccessMode::READ_WRITE)
             .openMode(OpenMode::PURGE_AND_CREATE)
@@ -114,6 +117,12 @@ template <typename SharedMemoryObjectType, typename MemoryManagerType>
 inline MemoryManagerType& MePooSegment<SharedMemoryObjectType, MemoryManagerType>::getMemoryManager() noexcept
 {
     return m_memoryManager;
+}
+
+template <typename SharedMemoryObjectType, typename MemoryManagerType>
+inline const ShmName_t& MePooSegment<SharedMemoryObjectType, MemoryManagerType>::getSegmentName() const noexcept
+{
+    return m_name;
 }
 
 template <typename SharedMemoryObjectType, typename MemoryManagerType>

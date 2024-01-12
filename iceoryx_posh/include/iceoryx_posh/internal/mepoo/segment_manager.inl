@@ -1,6 +1,7 @@
 // Copyright (c) 2019 by Robert Bosch GmbH. All rights reserved.
 // Copyright (c) 2021 by Apex.AI Inc. All rights reserved.
 // Copyright (c) 2023 by Mathias Kraus <elboberido@m-hias.de>. All rights reserved.
+// Copyright (c) 2024 by Latitude AI. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -41,10 +42,19 @@ inline SegmentManager<SegmentType>::SegmentManager(const SegmentConfig& segmentC
 template <typename SegmentType>
 inline void SegmentManager<SegmentType>::createSegment(const SegmentConfig::SegmentEntry& segmentEntry) noexcept
 {
+    if (std::find_if(
+            m_segmentContainer.begin(),
+            m_segmentContainer.end(), 
+            [&segmentEntry](const SegmentType& segment){ return segment.getSegmentName() == segmentEntry.m_name;}
+        ) != m_segmentContainer.end())
+    {
+        errorHandler(PoshError::MEPOO__MULTIPLE_SEGMENT_CONFIG_ENTRIES_WITH_SAME_NAME);
+        return;
+    }
     auto readerGroup = PosixGroup(segmentEntry.m_readerGroup);
     auto writerGroup = PosixGroup(segmentEntry.m_writerGroup);
     m_segmentContainer.emplace_back(
-        segmentEntry.m_mempoolConfig, *m_managementAllocator, readerGroup, writerGroup, segmentEntry.m_memoryInfo);
+        segmentEntry.m_name, segmentEntry.m_mempoolConfig, *m_managementAllocator, readerGroup, writerGroup, segmentEntry.m_memoryInfo);
 }
 
 template <typename SegmentType>
@@ -55,44 +65,17 @@ SegmentManager<SegmentType>::getSegmentMappings(const PosixUser& user) noexcept
     auto groupContainer = user.getGroups();
 
     SegmentManager::SegmentMappingContainer mappingContainer;
-    bool foundInWriterGroup = false;
 
-    // with the groups we can get all the segments (read or write) for the user
-    for (const auto& groupID : groupContainer)
+    for (const auto& segment : m_segmentContainer)
     {
-        for (const auto& segment : m_segmentContainer)
+        for (const auto& groupID : groupContainer)
         {
-            if (segment.getWriterGroup() == groupID)
+            const bool isWritable = (segment.getWriterGroup() == groupID);
+            const bool isReadable = (segment.getReaderGroup() == groupID);
+            if (isWritable || isReadable)
             {
-                // a user is allowed to be only in one writer group, as we currently only support one memory manager per
-                // process
-                if (!foundInWriterGroup)
-                {
-                    mappingContainer.emplace_back(
-                        segment.getWriterGroup().getName(), segment.getSegmentSize(), true, segment.getSegmentId());
-                    foundInWriterGroup = true;
-                }
-                else
-                {
-                    errorHandler(PoshError::MEPOO__USER_WITH_MORE_THAN_ONE_WRITE_SEGMENT);
-                    return SegmentManager::SegmentMappingContainer();
-                }
-            }
-        }
-    }
-
-    for (const auto& groupID : groupContainer)
-    {
-        for (const auto& segment : m_segmentContainer)
-        {
-            // only add segments which are not yet added as writer
-            if (segment.getReaderGroup() == groupID
-                && std::find_if(mappingContainer.begin(), mappingContainer.end(), [&](const SegmentMapping& mapping) {
-                       return mapping.m_segmentId == segment.getSegmentId();
-                   }) == mappingContainer.end())
-            {
-                mappingContainer.emplace_back(
-                    segment.getWriterGroup().getName(), segment.getSegmentSize(), false, segment.getSegmentId());
+                mappingContainer.emplace_back(segment.getSegmentName(), segment.getSegmentSize(), isWritable, segment.getSegmentId());
+                break;
             }
         }
     }
