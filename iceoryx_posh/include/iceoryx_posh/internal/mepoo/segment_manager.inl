@@ -84,28 +84,47 @@ SegmentManager<SegmentType>::getSegmentMappings(const PosixUser& user) noexcept
 }
 
 template <typename SegmentType>
-inline typename SegmentManager<SegmentType>::SegmentUserInformation
+inline expected<typename SegmentManager<SegmentType>::SegmentUserInformation, 
+         typename SegmentManager<SegmentType>::SegmentLookupError> 
+SegmentManager<SegmentType>::getSegmentInformationWithWriteAccessForUser(const ShmName_t& name, const PosixUser& user) noexcept
+{
+    for (auto& segment : m_segmentContainer)
+    {
+        if (segment.getSegmentName() == name)
+        {
+            // Verify that the user has write access to this segment.
+            for (const auto& groupID : user.getGroups())
+            {
+                if (segment.getWriterGroup() == groupID)
+                {
+                    return ok(SegmentUserInformation{segment.getMemoryManager(), segment.getSegmentId()});
+                }
+            }
+            return err(SegmentLookupError::NoWriteAccess);
+        }
+    }
+
+    return getSegmentInformationWithWriteAccessForUser(user);
+}
+
+template <typename SegmentType>
+inline expected<typename SegmentManager<SegmentType>::SegmentUserInformation, 
+         typename SegmentManager<SegmentType>::SegmentLookupError> 
 SegmentManager<SegmentType>::getSegmentInformationWithWriteAccessForUser(const PosixUser& user) noexcept
 {
-    auto groupContainer = user.getGroups();
-
-    SegmentUserInformation segmentInfo{nullopt_t(), 0u};
-
     // with the groups we can search for the writable segment of this user
-    for (const auto& groupID : groupContainer)
+    for (const auto& groupID : user.getGroups())
     {
         for (auto& segment : m_segmentContainer)
         {
-            if (segment.getWriterGroup() == groupID)
+            if (segment.getSegmentName() == groupID.getName() && segment.getWriterGroup() == groupID)
             {
-                segmentInfo.m_memoryManager = segment.getMemoryManager();
-                segmentInfo.m_segmentID = segment.getSegmentId();
-                return segmentInfo;
+                return ok(SegmentUserInformation{segment.getMemoryManager(), segment.getSegmentId()});
             }
         }
     }
 
-    return segmentInfo;
+    return err(SegmentLookupError::NoSegmentFound);
 }
 
 template <typename SegmentType>

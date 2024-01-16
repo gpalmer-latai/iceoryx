@@ -142,12 +142,11 @@ TEST_F(ProcessManager_test, HandleProcessShutdownPreparationRequestWorks)
     m_sut->registerProcess(m_processname, m_pid, m_user, m_isMonitored, 1U, 1U, m_versionInfo);
 
     auto user = PosixUser::getUserOfCurrentProcess();
-    auto payloadDataSegmentMemoryManager = m_roudiMemoryManager->segmentManager()
+    auto payloadSegment = m_roudiMemoryManager->segmentManager()
                                                .value()
-                                               ->getSegmentInformationWithWriteAccessForUser(user)
-                                               .m_memoryManager;
-
-    ASSERT_TRUE(payloadDataSegmentMemoryManager.has_value());
+                                               ->getSegmentInformationWithWriteAccessForUser(user);
+    ASSERT_TRUE(payloadSegment.has_value());
+    auto& payloadDataSegmentMemoryManager = payloadSegment->m_memoryManager;
 
     // get publisher and subscriber
     PublisherOptions publisherOptions{
@@ -156,7 +155,7 @@ TEST_F(ProcessManager_test, HandleProcessShutdownPreparationRequestWorks)
                                     ->acquirePublisherPortData({"1", "1", "1"},
                                                                publisherOptions,
                                                                m_processname,
-                                                               &payloadDataSegmentMemoryManager.value().get(),
+                                                               &payloadDataSegmentMemoryManager,
                                                                PortConfigInfo())
                                     .value());
 

@@ -28,6 +28,7 @@
 #include "iox/posix_user.hpp"
 #include "iox/string.hpp"
 #include "iox/vector.hpp"
+#include "iox/expected.hpp"
 
 namespace iox
 {
@@ -78,14 +79,37 @@ class SegmentManager
 
     struct SegmentUserInformation
     {
-        optional<std::reference_wrapper<MemoryManager>> m_memoryManager;
+        MemoryManager& m_memoryManager;
         uint64_t m_segmentID;
     };
 
     using SegmentMappingContainer = vector<SegmentMapping, MAX_SHM_SEGMENTS>;
 
     SegmentMappingContainer getSegmentMappings(const PosixUser& user) noexcept;
-    SegmentUserInformation getSegmentInformationWithWriteAccessForUser(const PosixUser& user) noexcept;
+
+    enum class SegmentLookupError
+    {
+      NoSegmentFound,
+      NoWriteAccess,
+    };
+
+    /// @brief Get the information for the requested segment to which the user has write access.
+    /// @param[in] name Name of the segment. 
+    ///                    If empty, each user group name will be tried instead until a match is found.
+    /// @param[in] user Posix user information. 
+    ///                 Used to determine write access and as a fallback for selecting a segment if no name is provided.
+    /// @return Information about the requested shared memory segment or a SegmentLookupError.
+    expected<SegmentUserInformation, SegmentLookupError> getSegmentInformationWithWriteAccessForUser(const ShmName_t& name, const PosixUser& user) noexcept;
+    
+    /// @brief Find the segment whose name implicitly matches the user's write-access permissions.
+    /// @details This reflects the legacy behavior where producers could only use the unique segment
+    ///          to which they have write access. These segments had no name specified and would be matched
+    ///          solely based on their access rights. 
+    ///          Now, segments with no names are given a default name of the RouDi process user group and this is 
+    ///          used instead to perform a match, producing the same semantic behavior.
+    /// @param[in] user Posix user information.
+    /// @return Information about the requested shared memory segment if one is found or a SegmentLookupError.
+    expected<SegmentUserInformation, SegmentLookupError> getSegmentInformationWithWriteAccessForUser(const PosixUser& user) noexcept;
 
     static uint64_t requiredManagementMemorySize(const SegmentConfig& config) noexcept;
     static uint64_t requiredChunkMemorySize(const SegmentConfig& config) noexcept;

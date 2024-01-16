@@ -80,8 +80,8 @@ class SegmentManager_test : public Test
     SegmentConfig getSegmentConfig()
     {
         SegmentConfig config;
-        config.m_sharedMemorySegments.emplace_back("segment_name1", "iox_roudi_test1", "iox_roudi_test2", mepooConfig);
-        config.m_sharedMemorySegments.emplace_back("segment_name2", "iox_roudi_test3", "iox_roudi_test2", mepooConfig);
+        config.m_sharedMemorySegments.emplace_back("iox_roudi_test2", "iox_roudi_test1", "iox_roudi_test2", mepooConfig);
+        config.m_sharedMemorySegments.emplace_back("other_segment", "iox_roudi_test3", "iox_roudi_test2", mepooConfig);
         return config;
     }
 
@@ -165,14 +165,48 @@ TEST_F(SegmentManager_test, getMemoryManagerForUserWithWriteUser)
     GTEST_SKIP_FOR_ADDITIONAL_USER() << "This test requires the -DTEST_WITH_ADDITIONAL_USER=ON cmake argument";
 
     auto sut = createSut();
-    auto memoryManager = sut->getSegmentInformationWithWriteAccessForUser(PosixUser{"iox_roudi_test2"}).m_memoryManager;
-    ASSERT_TRUE(memoryManager.has_value());
-    ASSERT_THAT(memoryManager.value().get().getNumberOfMemPools(), Eq(2u));
+    auto maybeSegment = sut->getSegmentInformationWithWriteAccessForUser(PosixUser{"iox_roudi_test2"});
+    ASSERT_TRUE(maybeSegment.has_value());
+    auto& memoryManager = maybeSegment->m_memoryManager;
+    ASSERT_THAT(memoryManager.getNumberOfMemPools(), Eq(2u));
 
-    auto poolInfo1 = memoryManager.value().get().getMemPoolInfo(0);
-    auto poolInfo2 = memoryManager.value().get().getMemPoolInfo(1);
+    auto poolInfo1 = memoryManager.getMemPoolInfo(0);
+    auto poolInfo2 = memoryManager.getMemPoolInfo(1);
     EXPECT_THAT(poolInfo1.m_numChunks, Eq(5u));
     EXPECT_THAT(poolInfo2.m_numChunks, Eq(7u));
+}
+
+TEST_F(SegmentManager_test, getMemoryManagerForNamedSegmentWithWriteAccess)
+{
+    ::testing::Test::RecordProperty("TEST_ID", "f9bf7e03-8c76-4a62-9f01-b408997e29b9");
+    GTEST_SKIP_FOR_ADDITIONAL_USER() << "This test requires the -DTEST_WITH_ADDITIONAL_USER=ON cmake argument";
+
+    auto sut = createSut();
+    auto maybeSegment = sut->getSegmentInformationWithWriteAccessForUser("other_segment", PosixUser{"iox_roudi_test2"});
+    ASSERT_TRUE(maybeSegment.has_value());
+    auto& memoryManager = maybeSegment->m_memoryManager;
+    ASSERT_THAT(memoryManager.getNumberOfMemPools(), Eq(2u));
+
+    auto poolInfo1 = memoryManager.getMemPoolInfo(0);
+    auto poolInfo2 = memoryManager.getMemPoolInfo(1);
+    EXPECT_THAT(poolInfo1.m_numChunks, Eq(5u));
+    EXPECT_THAT(poolInfo2.m_numChunks, Eq(7u));
+}
+
+TEST_F(SegmentManager_test, namedAndDefaultWriteAccessSegmentAreUnique)
+{
+    ::testing::Test::RecordProperty("TEST_ID", "3a7182ed-a64f-4ffe-ba7f-ba5968431eea");
+    GTEST_SKIP_FOR_ADDITIONAL_USER() << "This test requires the -DTEST_WITH_ADDITIONAL_USER=ON cmake argument";
+
+    auto sut = createSut();
+
+    auto maybeNamedSegment = sut->getSegmentInformationWithWriteAccessForUser("other_segment", PosixUser{"iox_roudi_test2"});
+    ASSERT_TRUE(maybeNamedSegment.has_value());
+
+    auto maybeDefaultSegment = sut->getSegmentInformationWithWriteAccessForUser(PosixUser{"iox_roudi_test2"});
+    ASSERT_TRUE(maybeDefaultSegment.has_value());
+
+    EXPECT_NE(maybeNamedSegment->m_segmentID, maybeDefaultSegment->m_segmentID);
 }
 
 TEST_F(SegmentManager_test, getMemoryManagerForUserFailWithReadOnlyUser)
@@ -181,8 +215,8 @@ TEST_F(SegmentManager_test, getMemoryManagerForUserFailWithReadOnlyUser)
     GTEST_SKIP_FOR_ADDITIONAL_USER() << "This test requires the -DTEST_WITH_ADDITIONAL_USER=ON cmake argument";
 
     auto sut = createSut();
-    EXPECT_FALSE(
-        sut->getSegmentInformationWithWriteAccessForUser(PosixUser{"iox_roudi_test1"}).m_memoryManager.has_value());
+    EXPECT_TRUE(
+        sut->getSegmentInformationWithWriteAccessForUser(ShmName_t{"other_segment"}, PosixUser{"iox_roudi_test1"}).error() == SUT::SegmentLookupError::NoWriteAccess);
 }
 
 TEST_F(SegmentManager_test, getMemoryManagerForUserFailWithNonExistingUser)
@@ -191,7 +225,18 @@ TEST_F(SegmentManager_test, getMemoryManagerForUserFailWithNonExistingUser)
     GTEST_SKIP_FOR_ADDITIONAL_USER() << "This test requires the -DTEST_WITH_ADDITIONAL_USER=ON cmake argument";
 
     auto sut = createSut();
-    EXPECT_FALSE(sut->getSegmentInformationWithWriteAccessForUser(PosixUser{"no_user"}).m_memoryManager.has_value());
+    // The user does not exist so no groups are checked for a matching segment.
+    EXPECT_TRUE(sut->getSegmentInformationWithWriteAccessForUser(PosixUser{"no_user"}).error() == SUT::SegmentLookupError::NoSegmentFound);
+}
+
+TEST_F(SegmentManager_test, getMemoryManagerForUserFailWithNoMatchingSegment)
+{
+    ::testing::Test::RecordProperty("TEST_ID", "b44a49e9-6e3f-44ac-94d4-cce7e5198fca");
+    GTEST_SKIP_FOR_ADDITIONAL_USER() << "This test requires the -DTEST_WITH_ADDITIONAL_USER=ON cmake argument";
+
+    auto sut = createSut();
+    // The user exists but none of the groups has a matching name.
+    EXPECT_TRUE(sut->getSegmentInformationWithWriteAccessForUser(PosixUser{"iox_roudi_test1"}).error() == SUT::SegmentLookupError::NoSegmentFound);
 }
 
 TEST_F(SegmentManager_test, addingMoreThanOneEntryWithSameNameFails)
