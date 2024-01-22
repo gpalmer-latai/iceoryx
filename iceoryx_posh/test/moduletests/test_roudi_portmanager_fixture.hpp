@@ -92,9 +92,9 @@ class PortManager_test : public Test
         auto user = PosixUser::getUserOfCurrentProcess();
         auto segmentInfo =
             m_roudiMemoryManager->segmentManager().value()->getSegmentInformationWithWriteAccessForUser(user);
-        ASSERT_TRUE(segmentInfo.m_memoryManager.has_value());
+        ASSERT_TRUE(segmentInfo.has_value());
 
-        m_payloadDataSegmentMemoryManager = &segmentInfo.m_memoryManager.value().get();
+        m_payloadDataSegmentMemoryManager = &segmentInfo->m_memoryManager;
 
         // clearing the introspection, is not in d'tor -> SEGFAULT in delete sporadically
         m_portManager->stopPortIntrospection();

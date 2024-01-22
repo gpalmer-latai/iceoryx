@@ -1,6 +1,7 @@
 // Copyright (c) 2019 - 2021 by Robert Bosch GmbH. All rights reserved.
 // Copyright (c) 2021 - 2022 by Apex.AI Inc. All rights reserved.
 // Copyright (c) 2023 by Mathias Kraus <elboberido@m-hias.de>. All rights reserved.
+// Copyright (c) 2024 by Latitude AI. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -490,9 +491,9 @@ void ProcessManager::addPublisherForProcess(const RuntimeName_t& name,
 {
     findProcess(name)
         .and_then([&](auto& process) { // create a PublisherPort
-            auto segmentInfo = m_segmentManager->getSegmentInformationWithWriteAccessForUser(process->getUser());
+            auto maybeSegmentInfo = m_segmentManager->getSegmentInformationWithWriteAccessForUser(publisherOptions.segmentName, process->getUser());
 
-            if (!segmentInfo.m_memoryManager.has_value())
+            if (!maybeSegmentInfo.has_value())
             {
                 // Tell the app no writable shared memory segment was found
                 runtime::IpcMessage sendBuffer;
@@ -504,7 +505,7 @@ void ProcessManager::addPublisherForProcess(const RuntimeName_t& name,
             }
 
             auto maybePublisher = m_portManager.acquirePublisherPortData(
-                service, publisherOptions, name, &segmentInfo.m_memoryManager.value().get(), portConfigInfo);
+                service, publisherOptions, name, &maybeSegmentInfo->m_memoryManager, portConfigInfo);
 
             if (maybePublisher.has_value())
             {
@@ -567,9 +568,9 @@ void ProcessManager::addClientForProcess(const RuntimeName_t& name,
 {
     findProcess(name)
         .and_then([&](auto& process) { // create a ClientPort
-            auto segmentInfo = m_segmentManager->getSegmentInformationWithWriteAccessForUser(process->getUser());
+            auto maybeSegmentInfo = m_segmentManager->getSegmentInformationWithWriteAccessForUser(clientOptions.requestSegmentName, process->getUser());
 
-            if (!segmentInfo.m_memoryManager.has_value())
+            if (!maybeSegmentInfo.has_value())
             {
                 // Tell the app no writable shared memory segment was found
                 runtime::IpcMessage sendBuffer;
@@ -582,7 +583,7 @@ void ProcessManager::addClientForProcess(const RuntimeName_t& name,
 
             m_portManager
                 .acquireClientPortData(
-                    service, clientOptions, name, &segmentInfo.m_memoryManager.value().get(), portConfigInfo)
+                    service, clientOptions, name, &maybeSegmentInfo->m_memoryManager, portConfigInfo)
                 .and_then([&](auto& clientPort) {
                     auto relativePtrToClientPort =
                         UntypedRelativePointer::getOffset(segment_id_t{m_mgmtSegmentId}, clientPort);
@@ -621,9 +622,9 @@ void ProcessManager::addServerForProcess(const RuntimeName_t& name,
 {
     findProcess(name)
         .and_then([&](auto& process) { // create a ServerPort
-            auto segmentInfo = m_segmentManager->getSegmentInformationWithWriteAccessForUser(process->getUser());
+            auto maybeSegmentInfo = m_segmentManager->getSegmentInformationWithWriteAccessForUser(serverOptions.responseSegmentName, process->getUser());
 
-            if (!segmentInfo.m_memoryManager.has_value())
+            if (!maybeSegmentInfo.has_value())
             {
                 // Tell the app no writable shared memory segment was found
                 runtime::IpcMessage sendBuffer;
@@ -636,7 +637,7 @@ void ProcessManager::addServerForProcess(const RuntimeName_t& name,
 
             m_portManager
                 .acquireServerPortData(
-                    service, serverOptions, name, &segmentInfo.m_memoryManager.value().get(), portConfigInfo)
+                    service, serverOptions, name, &maybeSegmentInfo->m_memoryManager, portConfigInfo)
                 .and_then([&](auto& serverPort) {
                     auto relativePtrToServerPort =
                         UntypedRelativePointer::getOffset(segment_id_t{m_mgmtSegmentId}, serverPort);
