@@ -36,68 +36,45 @@ UsedChunkList<Capacity>::UsedChunkList() noexcept
 }
 
 template <uint32_t Capacity>
-bool UsedChunkList<Capacity>::insert(mepoo::SharedChunk chunk) noexcept
+expected<UsedChunk, UsedChunkInsertError> UsedChunkList<Capacity>::insert(mepoo::SharedChunk chunk) noexcept
 {
-    auto hasFreeSpace = m_freeListHead != INVALID_INDEX;
+    uint32_t index{std::numeric_limits<uint32_t>::max()};
+    bool hasFreeSpace = m_freeList.pop(index);
     if (hasFreeSpace)
     {
-        // get next free entry after freelistHead
-        auto nextFree = m_listIndices[m_freeListHead];
-
-        // freeListHead is getting new usedListHead, next of this entry is updated to next in usedList
-        m_listIndices[m_freeListHead] = m_usedListHead;
-        m_usedListHead = m_freeListHead;
-
-        m_listData[m_usedListHead] = DataElement_t(chunk);
-
-        // set freeListHead to the next free entry
-        m_freeListHead = nextFree;
-
+        IOX_ASSERT(index < Capacity, "Oops, the free list returned an index it is not supposed to");
+        m_listData[index] = DataElement_t(chunk);
         m_synchronizer.clear(std::memory_order_release);
-        return true;
+        return ok(UsedChunk{chunk.getChunkHeader(), index});
     }
     else
     {
-        return false;
+        return err(UsedChunkInsertError::NO_FREE_SPACE);
     }
 }
 
 template <uint32_t Capacity>
-bool UsedChunkList<Capacity>::remove(const mepoo::ChunkHeader* chunkHeader, mepoo::SharedChunk& chunk) noexcept
+expected<mepoo::SharedChunk, UsedChunkRemoveError> UsedChunkList<Capacity>::remove(const UsedChunk usedChunk) noexcept
 {
-    auto previous = INVALID_INDEX;
-
-    // go through usedList with stored chunks
-    for (auto current = m_usedListHead; current != INVALID_INDEX; current = m_listIndices[current])
+    // TODO: Should this be an assertion? What about the other error cases?
+    if (usedChunk.listIndex < Capacity)
     {
-        if (!m_listData[current].isLogicalNullptr())
-        {
-            // does the entry match the one we want to remove?
-            if (m_listData[current].getChunkHeader() == chunkHeader)
-            {
-                chunk = m_listData[current].releaseToSharedChunk();
-
-                // remove index from used list
-                if (current == m_usedListHead)
-                {
-                    m_usedListHead = m_listIndices[current];
-                }
-                else
-                {
-                    m_listIndices[previous] = m_listIndices[current];
-                }
-
-                // insert index to free list
-                m_listIndices[current] = m_freeListHead;
-                m_freeListHead = current;
-
-                m_synchronizer.clear(std::memory_order_release);
-                return true;
-            }
-        }
-        previous = current;
+        return err(UsedChunkRemoveError::INVALID_INDEX);
     }
-    return false;
+    auto chunkRef = m_listData[usedChunk.listIndex];
+    if (chunkRef.isLogicalNullptr())
+    {
+        return err(UsedChunkRemoveError::CHUNK_ALREADY_FREED);
+    }
+    if (chunkRef.getChunkHeader() != usedChunk.chunkHeader)
+    {
+        return err(UsedChunkRemoveError::WRONG_CHUNK_REFERENCED);
+    }
+    
+    auto chunk = chunkRef.releaseToSharedChunk();
+    m_freeList.push(usedChunk.listIndex);
+    m_synchronizer.clear(std::memory_order_release);
+    return ok(std::move(chunk));
 }
 
 template <uint32_t Capacity>
@@ -120,31 +97,7 @@ void UsedChunkList<Capacity>::cleanup() noexcept
 template <uint32_t Capacity>
 void UsedChunkList<Capacity>::init() noexcept
 {
-    // build list
-    for (uint32_t i = 0U; i < Capacity; ++i)
-    {
-        m_listIndices[i] = i + 1u;
-    }
-
-    if (Capacity > 0U)
-    {
-        m_listIndices[Capacity - 1U] = INVALID_INDEX; // just to save us from the future self
-    }
-    else
-    {
-        m_listIndices[0U] = INVALID_INDEX;
-    }
-
-
-    m_usedListHead = INVALID_INDEX;
-    m_freeListHead = 0U;
-
-    // clear data
-    for (auto& data : m_listData)
-    {
-        data.releaseToSharedChunk();
-    }
-
+    m_freeList.init(m_freeListStorage, Capacity);
     m_synchronizer.clear(std::memory_order_release);
 }
 

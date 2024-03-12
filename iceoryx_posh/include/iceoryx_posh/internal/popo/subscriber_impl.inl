@@ -44,7 +44,7 @@ inline expected<Sample<const T, const H>, ChunkReceiveResult> SubscriberImpl<T, 
     if (result.has_error())
     {
         return err(result.error());
-    }
+    }se
     auto userPayloadPtr = static_cast<const T*>(result.value()->userPayload());
     auto samplePtr = iox::unique_ptr<const T>(userPayloadPtr, [this](const T* userPayload) {
         auto* chunkHeader = iox::mepoo::ChunkHeader::fromUserPayload(userPayload);

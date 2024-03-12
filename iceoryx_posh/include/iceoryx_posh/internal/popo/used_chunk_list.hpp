@@ -17,9 +17,13 @@
 #ifndef IOX_POSH_POPO_USED_CHUNK_LIST_HPP
 #define IOX_POSH_POPO_USED_CHUNK_LIST_HPP
 
+#include "iox/detail/mpmc_loffli.hpp"
 #include "iceoryx_posh/internal/mepoo/shared_chunk.hpp"
 #include "iceoryx_posh/internal/mepoo/shm_safe_unmanaged_chunk.hpp"
 #include "iceoryx_posh/mepoo/chunk_header.hpp"
+
+#include "iox/not_null.hpp"
+#include "iox/expected.hpp"
 
 #include <atomic>
 #include <cstdint>
@@ -28,6 +32,25 @@ namespace iox
 {
 namespace popo
 {
+enum class UsedChunkInsertError
+{
+  NO_FREE_SPACE,
+};
+
+enum class UsedChunkRemoveError
+{
+  CHUNK_ALREADY_FREED,
+  INVALID_INDEX,
+  WRONG_CHUNK_REFERENCED,
+};
+
+/// @brief Encapsulates information identifying a chunk stored in the UsedChunkList.
+struct UsedChunk
+{
+  not_null<const mepoo::ChunkHeader*> chunkHeader;
+  uint32_t listIndex;
+};
+
 /// @brief This class is used to keep track of the chunks currently in use by the application.
 ///        In case the application terminates while holding chunks, this list is used by RouDi to retain ownership of
 ///        the chunks and prevent a chunk leak.
@@ -44,21 +67,23 @@ class UsedChunkList
     static_assert(Capacity > 0, "UsedChunkList Capacity must be larger than 0!");
 
   public:
+    using freeList_t = concurrent::MpmcLoFFLi;
+    
     /// @brief Constructs a default UsedChunkList
     UsedChunkList() noexcept;
 
     /// @brief Inserts a SharedChunk into the list
     /// @param[in] chunk to store in the list
-    /// @return true if successful, otherwise false if e.g. the list is already full
+    /// @return A UsedChunk referencing insertion location if successful, 
+    ///         otherwise a UsedChunkInsertError indicating the cause of failure.
     /// @note only from runtime context
-    bool insert(mepoo::SharedChunk chunk) noexcept;
+    expected<UsedChunk, UsedChunkInsertError> insert(mepoo::SharedChunk chunk) noexcept;
 
     /// @brief Removes a chunk from the list
-    /// @param[in] chunkHeader to look for a corresponding SharedChunk
-    /// @param[out] chunk which is removed
-    /// @return true if successfully removed, otherwise false if e.g. the chunkHeader was not found in the list
+    /// @param[in] usedChunk Referencing insertion location of the SharedChunk to remove.
+    /// @return Removed chunk if successful, otherwise a UsedChunkRemoveError indicating the cause of failure.
     /// @note only from runtime context
-    bool remove(const mepoo::ChunkHeader* chunkHeader, mepoo::SharedChunk& chunk) noexcept;
+    expected<mepoo::SharedChunk, UsedChunkRemoveError> remove(const UsedChunk usedChunk) noexcept;
 
     /// @brief Cleans up all the remaining chunks from the list.
     /// @note from RouDi context once the applications walked the plank. It is unsafe to call this if the application is
@@ -76,10 +101,9 @@ class UsedChunkList
 
   private:
     std::atomic_flag m_synchronizer = ATOMIC_FLAG_INIT;
-    uint32_t m_usedListHead{INVALID_INDEX};
-    uint32_t m_freeListHead{0u};
-    uint32_t m_listIndices[Capacity];
     DataElement_t m_listData[Capacity];
+    uint32_t m_freeListStorage[Capacity]; 
+    freeList_t m_freeList;
 };
 
 } // namespace popo
