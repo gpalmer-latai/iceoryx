@@ -38,21 +38,18 @@ inline UntypedSubscriberImpl<BaseSubscriberType>::UntypedSubscriberImpl(const ca
 }
 
 template <typename BaseSubscriberType>
-inline expected<const void*, ChunkReceiveResult> UntypedSubscriberImpl<BaseSubscriberType>::take() noexcept
+inline expected<Sample<void>, ChunkReceiveResult> UntypedSubscriberImpl<BaseSubscriberType>::take() noexcept
 {
     auto result = BaseSubscriber::takeChunk();
     if (result.has_error())
     {
         return err(result.error());
     }
-    return ok(result.value()->userPayload());
-}
+    auto& usedChunk = result.value();
+    return ok({usedChunk, [this, usedChunk](const void*) {
+        this->port().releaseChunk(usedChunk);
+    }});
 
-template <typename BaseSubscriberType>
-inline void UntypedSubscriberImpl<BaseSubscriberType>::release(const void* const userPayload) noexcept
-{
-    auto chunkHeader = mepoo::ChunkHeader::fromUserPayload(userPayload);
-    port().releaseChunk(chunkHeader);
 }
 
 template <typename BaseSubscriberType>

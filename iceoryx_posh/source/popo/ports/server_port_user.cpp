@@ -39,34 +39,26 @@ ServerPortUser::MemberType_t* ServerPortUser::getMembers() noexcept
     return reinterpret_cast<MemberType_t*>(BasePort::getMembers());
 }
 
-expected<const RequestHeader*, ServerRequestResult> ServerPortUser::getRequest() noexcept
+expected<UsedChunk, ServerRequestResult> ServerPortUser::getRequest() noexcept
 {
-    auto getChunkResult = m_chunkReceiver.tryGet();
+    auto maybeUsedChunk = m_chunkReceiver.tryGet();
 
-    if (getChunkResult.has_error())
+    if (maybeUsedChunk.has_error())
     {
         if (!isOffered())
         {
             return err(ServerRequestResult::NO_PENDING_REQUESTS_AND_SERVER_DOES_NOT_OFFER);
         }
         /// @todo iox-#1012 use error<E2>::from(E1); once available
-        return err(into<ServerRequestResult>(getChunkResult.error()));
+        return err(into<ServerRequestResult>(maybeUsedChunk.error()));
     }
 
-    return ok(static_cast<const RequestHeader*>(getChunkResult.value()->userHeader()));
+    return ok(maybeUsedChunk.value());
 }
 
-void ServerPortUser::releaseRequest(const RequestHeader* const requestHeader) noexcept
+void ServerPortUser::releaseRequest(const UsedChunk usedChunk) noexcept
 {
-    if (requestHeader != nullptr)
-    {
-        m_chunkReceiver.release(requestHeader->getChunkHeader());
-    }
-    else
-    {
-        IOX_LOG(ERROR, "Provided RequestHeader is a nullptr");
-        IOX_REPORT(PoshError::POPO__SERVER_PORT_INVALID_REQUEST_TO_RELEASE_FROM_USER, iox::er::RUNTIME_ERROR);
-    }
+    m_chunkReceiver.release(usedChunk);
 }
 
 void ServerPortUser::releaseQueuedRequests() noexcept
@@ -84,7 +76,7 @@ bool ServerPortUser::hasLostRequestsSinceLastCall() noexcept
     return m_chunkReceiver.hasLostChunks();
 }
 
-expected<ResponseHeader*, AllocationError>
+expected<UsedChunk, AllocationError>
 ServerPortUser::allocateResponse(const RequestHeader* const requestHeader,
                                  const uint64_t userPayloadSize,
                                  const uint32_t userPayloadAlignment) noexcept
@@ -94,60 +86,47 @@ ServerPortUser::allocateResponse(const RequestHeader* const requestHeader,
         return err(AllocationError::INVALID_PARAMETER_FOR_REQUEST_HEADER);
     }
 
-    auto allocateResult = m_chunkSender.tryAllocate(
+    auto maybeUsedChunk = m_chunkSender.tryAllocate(
         getUniqueID(), userPayloadSize, userPayloadAlignment, sizeof(ResponseHeader), alignof(ResponseHeader));
 
-    if (allocateResult.has_error())
+    if (maybeUsedChunk.has_error())
     {
-        return err(allocateResult.error());
+        return err(maybeUsedChunk.error());
     }
 
-    auto* responseHeader =
-        new (allocateResult.value()->userHeader()) ResponseHeader(requestHeader->m_uniqueClientQueueId,
-                                                                  requestHeader->m_lastKnownClientQueueIndex,
-                                                                  requestHeader->getSequenceId());
+    auto& usedChunk = maybeUsedChunk.value();
+    auto userHeader = static_cast<mepoo::ChunkHeader*>(usedChunk.chunkHeader)->userHeader();
+    new (userHeader) ResponseHeader(requestHeader->m_uniqueClientQueueId,
+                                    requestHeader->m_lastKnownClientQueueIndex,
+                                    requestHeader->getSequenceId());
 
-    return ok(responseHeader);
+    return ok(usedChunk);
 }
 
-void ServerPortUser::releaseResponse(const ResponseHeader* const responseHeader) noexcept
+void ServerPortUser::releaseResponse(const UsedChunk usedChunk) noexcept
 {
-    if (responseHeader != nullptr)
-    {
-        m_chunkSender.release(responseHeader->getChunkHeader());
-    }
-    else
-    {
-        IOX_LOG(ERROR, "Provided ResponseHeader is a nullptr");
-        IOX_REPORT(PoshError::POPO__SERVER_PORT_INVALID_RESPONSE_TO_FREE_FROM_USER, iox::er::RUNTIME_ERROR);
-    }
+    m_chunkSender.release(usedChunk);
 }
 
-expected<void, ServerSendError> ServerPortUser::sendResponse(ResponseHeader* const responseHeader) noexcept
+expected<void, ServerSendError> ServerPortUser::sendResponse(const UsedChunk usedChunk) noexcept
 {
-    if (responseHeader == nullptr)
-    {
-        IOX_LOG(ERROR, "Provided ResponseHeader is a nullptr");
-        IOX_REPORT(PoshError::POPO__SERVER_PORT_INVALID_RESPONSE_TO_SEND_FROM_USER, iox::er::RUNTIME_ERROR);
-        return err(ServerSendError::INVALID_RESPONSE);
-    }
-
     const auto offerRequested = getMembers()->m_offeringRequested.load(std::memory_order_relaxed);
     if (!offerRequested)
     {
-        releaseResponse(responseHeader);
+        releaseResponse(usedChunk);
         IOX_LOG(WARN, "Try to send response without having offered!");
         return err(ServerSendError::NOT_OFFERED);
     }
 
     bool responseSent{false};
+    auto responseHeader = static_cast<ResponseHeader*>(static_cast<mepoo::ChunkHeader*>(usedChunk.chunkHeader)->userHeader());
     m_chunkSender.getQueueIndex(responseHeader->m_uniqueClientQueueId, responseHeader->m_lastKnownClientQueueIndex)
         .and_then([&](auto queueIndex) {
             responseHeader->m_lastKnownClientQueueIndex = queueIndex;
             responseSent = m_chunkSender.sendToQueue(
-                responseHeader->getChunkHeader(), responseHeader->m_uniqueClientQueueId, queueIndex);
+                usedChunk, responseHeader->m_uniqueClientQueueId, queueIndex);
         })
-        .or_else([&] { releaseResponse(responseHeader); });
+        .or_else([&] { releaseResponse(usedChunk); });
 
     if (!responseSent)
     {

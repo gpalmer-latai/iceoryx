@@ -31,9 +31,10 @@ void MpmcLoFFLi::init(not_null<Index_t*> freeIndicesMemory, const uint32_t capac
                 "Requested capacity exceeds limits!");
     IOX_ENFORCE(m_head.is_lock_free(), "std::atomic<MpmcLoFFLi::Node> must be lock-free!");
 
-    m_nextFreeIndex = freeIndicesMemory;
     m_size = capacity;
     m_invalidIndex = m_size + 1;
+    m_head.store({0U, 1U});
+    m_nextFreeIndex = freeIndicesMemory;
 
     if (m_nextFreeIndex != nullptr)
     {

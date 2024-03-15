@@ -84,30 +84,24 @@ inline expected<Sample<T, H>, AllocationError> PublisherImpl<T, H, BasePublisher
     {
         return err(result.error());
     }
-    else
-    {
-        return ok(convertChunkHeaderToSample(result.value()));
-    }
+    return ok(convertUsedChunkToSample(result.value()));
 }
 
 template <typename T, typename H, typename BasePublisherType>
 inline void PublisherImpl<T, H, BasePublisherType>::publish(Sample<T, H>&& sample) noexcept
 {
-    auto userPayload = sample.release(); // release the Samples ownership of the chunk before publishing
-    auto chunkHeader = mepoo::ChunkHeader::fromUserPayload(userPayload);
-    port().sendChunk(chunkHeader);
+    auto usedChunk = sample.release(); // release the Samples ownership of the chunk before publishing
+    port().sendChunk(usedChunk);
 }
 
 template <typename T, typename H, typename BasePublisherType>
 inline Sample<T, H>
-PublisherImpl<T, H, BasePublisherType>::convertChunkHeaderToSample(mepoo::ChunkHeader* const header) noexcept
+PublisherImpl<T, H, BasePublisherType>::convertUsedChunkToSample(UsedChunk usedChunk) noexcept
 {
-    return Sample<T, H>(iox::unique_ptr<T>(reinterpret_cast<T*>(header->userPayload()),
-                                           [this](T* userPayload) {
-                                               auto* chunkHeader =
-                                                   iox::mepoo::ChunkHeader::fromUserPayload(userPayload);
-                                               this->port().releaseChunk(chunkHeader);
-                                           }),
+    return Sample<T, H>(usedChunk, 
+                        [this, usedChunk](T*) {
+                            this->port().releaseChunk(usedChunk);
+                        },
                         *this);
 }
 

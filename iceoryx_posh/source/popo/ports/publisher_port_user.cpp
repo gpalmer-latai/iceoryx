@@ -38,7 +38,7 @@ PublisherPortUser::MemberType_t* PublisherPortUser::getMembers() noexcept
     return reinterpret_cast<MemberType_t*>(BasePort::getMembers());
 }
 
-expected<mepoo::ChunkHeader*, AllocationError>
+expected<UsedChunk, AllocationError>
 PublisherPortUser::tryAllocateChunk(const uint64_t userPayloadSize,
                                     const uint32_t userPayloadAlignment,
                                     const uint32_t userHeaderSize,
@@ -48,18 +48,18 @@ PublisherPortUser::tryAllocateChunk(const uint64_t userPayloadSize,
         getUniqueID(), userPayloadSize, userPayloadAlignment, userHeaderSize, userHeaderAlignment);
 }
 
-void PublisherPortUser::releaseChunk(mepoo::ChunkHeader* const chunkHeader) noexcept
+void PublisherPortUser::releaseChunk(const UsedChunk usedChunk) noexcept
 {
-    m_chunkSender.release(chunkHeader);
+    m_chunkSender.release(usedChunk);
 }
 
-void PublisherPortUser::sendChunk(mepoo::ChunkHeader* const chunkHeader) noexcept
+void PublisherPortUser::sendChunk(const UsedChunk usedChunk) noexcept
 {
     const auto offerRequested = getMembers()->m_offeringRequested.load(std::memory_order_relaxed);
 
     if (offerRequested)
     {
-        m_chunkSender.send(chunkHeader);
+        m_chunkSender.send(usedChunk);
     }
     else
     {
@@ -67,7 +67,7 @@ void PublisherPortUser::sendChunk(mepoo::ChunkHeader* const chunkHeader) noexcep
         // this is needed e.g. for AUTOSAR Adaptive fields
         // just always calling send and relying that there are no subscribers if not offered does not work, as the list
         // of subscribers is updated asynchronously by RouDi (only RouDi has write access to the list of subscribers)
-        m_chunkSender.pushToHistory(chunkHeader);
+        m_chunkSender.pushToHistory(usedChunk);
     }
 }
 

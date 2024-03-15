@@ -94,7 +94,7 @@ inline bool BaseSubscriber<port_t>::hasMissedData() noexcept
 }
 
 template <typename port_t>
-inline expected<const mepoo::ChunkHeader*, ChunkReceiveResult> BaseSubscriber<port_t>::takeChunk() noexcept
+inline expected<UsedChunk, ChunkReceiveResult> BaseSubscriber<port_t>::takeChunk() noexcept
 {
     return m_port.tryGetChunk();
 }

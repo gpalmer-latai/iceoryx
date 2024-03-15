@@ -79,19 +79,19 @@ class ClientPortUser : public BasePort
     /// cleanup if the user process disappears
     /// @param[in] userPayloadSize, size of the user-paylaod without additional headers
     /// @param[in] userPayloadAlignment, alignment of the user-paylaod without additional headers
-    /// @return on success pointer to a RequestHeader which can be used to access the chunk-header, user-header and
-    /// user-payload fields, error if not
-    expected<RequestHeader*, AllocationError> allocateRequest(const uint64_t userPayloadSize,
+    /// @return on success a UsedChunk whose RequestHeader has been initialized.
+    ///         on failure, an AllocationError.
+    expected<UsedChunk, AllocationError> allocateRequest(const uint64_t userPayloadSize,
                                                               const uint32_t userPayloadAlignment) noexcept;
 
     /// @brief Releases an allocated request without sending it
-    /// @param[in] requestHeader, pointer to the RequestHeader to free
-    void releaseRequest(const RequestHeader* const requestHeader) noexcept;
+    /// @param[in] usedChunk, reference to chunk to free.
+    void releaseRequest(const UsedChunk usedChunk) noexcept;
 
     /// @brief Send an allocated request chunk to the server port
-    /// @param[in] requestHeader, pointer to the RequestHeader to send
+    /// @param[in] usedChunk, reference to chunk to send.
     /// @return ClientSendError if sending was not successful
-    expected<void, ClientSendError> sendRequest(RequestHeader* const requestHeader) noexcept;
+    expected<void, ClientSendError> sendRequest(const UsedChunk usedChunk) noexcept;
 
     /// @brief try to connect to the server Caution: There can be delays between calling connect and a change
     /// in the connection state
@@ -113,13 +113,13 @@ class ClientPortUser : public BasePort
 
     /// @brief Tries to get the next response from the queue. If there is a new one, the ResponseHeader of the oldest
     /// response in the queue is returned (FiFo queue)
-    /// @return expected that has a new ResponseHeader if there are new responses in the underlying queue,
-    /// ChunkReceiveResult on error
-    expected<const ResponseHeader*, ChunkReceiveResult> getResponse() noexcept;
+    /// @return expected that has a UsedChunk corresponding to a request 
+    ///         if there are new responses in the underlying queue, ChunkReceiveResult on error
+    expected<UsedChunk, ChunkReceiveResult> getResponse() noexcept;
 
     /// @brief Release a response that was obtained with getResponseChunk
-    /// @param[in] requestHeader, pointer to the ResponseHeader to release
-    void releaseResponse(const ResponseHeader* const responseHeader) noexcept;
+    /// @param[in] usedChunk, reference to the in-use chunk to release.
+    void releaseResponse(const UsedChunk usedChunk) noexcept;
 
     /// @brief Release all the responses that are currently queued up.
     void releaseQueuedResponses() noexcept;

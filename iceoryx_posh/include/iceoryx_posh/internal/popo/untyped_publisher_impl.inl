@@ -38,35 +38,31 @@ inline UntypedPublisherImpl<BasePublisherType>::UntypedPublisherImpl(PortType&& 
 }
 
 template <typename BasePublisherType>
-inline void UntypedPublisherImpl<BasePublisherType>::publish(void* const userPayload) noexcept
+inline void UntypedPublisherImpl<BasePublisherType>::publish(Sample<void>&& sample) noexcept
 {
-    auto chunkHeader = mepoo::ChunkHeader::fromUserPayload(userPayload);
-    port().sendChunk(chunkHeader);
+    auto usedChunk = sample.release(); // release the Samples ownership of the chunk before publishing
+    port().sendChunk(usedChunk);
 }
 
 template <typename BasePublisherType>
-inline expected<void*, AllocationError>
+inline expected<Sample<void>, AllocationError>
 UntypedPublisherImpl<BasePublisherType>::loan(const uint64_t userPayloadSize,
                                               const uint32_t userPayloadAlignment,
                                               const uint32_t userHeaderSize,
                                               const uint32_t userHeaderAlignment) noexcept
 {
-    auto result = port().tryAllocateChunk(userPayloadSize, userPayloadAlignment, userHeaderSize, userHeaderAlignment);
-    if (result.has_error())
+    auto maybeUsedChunk = port().tryAllocateChunk(userPayloadSize, userPayloadAlignment, userHeaderSize, userHeaderAlignment);
+    if (maybeUsedChunk.has_error())
     {
-        return err(result.error());
+        return err(maybeUsedChunk.error());
     }
-    else
-    {
-        return ok(result.value()->userPayload());
-    }
-}
+    auto& usedChunk = maybeUsedChunk.value();
+    return ok(Sample<void>(usedChunk, 
+                           [this, usedChunk](void*) {
+                                this->port().releaseChunk(usedChunk);
+                           },
+                           *this));
 
-template <typename BasePublisherType>
-inline void UntypedPublisherImpl<BasePublisherType>::release(void* const userPayload) noexcept
-{
-    auto chunkHeader = mepoo::ChunkHeader::fromUserPayload(userPayload);
-    port().releaseChunk(chunkHeader);
 }
 
 } // namespace popo

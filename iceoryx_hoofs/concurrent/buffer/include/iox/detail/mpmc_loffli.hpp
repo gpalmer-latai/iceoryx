@@ -81,6 +81,8 @@ class MpmcLoFFLi
     /// Initializes the lock-free free-list
     /// @param [in] freeIndicesMemory pointer to a memory with the capacity calculated by requiredMemorySize()
     /// @param [in] capacity is the number of elements of the free-list; must be the same used at requiredMemorySize()
+    /// @note This is NOT thread safe, and is only meant to be called by setup/teardown logic when there are no longer 
+    ///       any active concurrent users.
     void init(not_null<Index_t*> freeIndicesMemory, const uint32_t capacity) noexcept;
 
     /// Pop a value from the free-list

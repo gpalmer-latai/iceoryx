@@ -70,7 +70,7 @@ ChunkReceiver<ChunkReceiverDataType>::getMembers() noexcept
 }
 
 template <typename ChunkReceiverDataType>
-inline expected<const mepoo::ChunkHeader*, ChunkReceiveResult> ChunkReceiver<ChunkReceiverDataType>::tryGet() noexcept
+inline expected<UsedChunk, ChunkReceiveResult> ChunkReceiver<ChunkReceiverDataType>::tryGet() noexcept
 {
     auto popRet = this->tryPop();
 
@@ -79,14 +79,15 @@ inline expected<const mepoo::ChunkHeader*, ChunkReceiveResult> ChunkReceiver<Chu
         auto sharedChunk = *popRet;
 
         // if the application holds too many chunks, don't provide more
-        if (getMembers()->m_chunksInUse.insert(sharedChunk))
+        auto maybeUsedChunk = getMembers()->m_chunksInUse.insert(sharedChunk);
+        if (maybeUsedChunk.has_value())
         {
-            return ok(const_cast<const mepoo::ChunkHeader*>(sharedChunk.getChunkHeader()));
+            return ok(maybeUsedChunk.value());
         }
         else
         {
             // release the chunk
-            sharedChunk = nullptr;
+            sharedChunk.release();
             return err(ChunkReceiveResult::TOO_MANY_CHUNKS_HELD_IN_PARALLEL);
         }
     }
@@ -94,11 +95,10 @@ inline expected<const mepoo::ChunkHeader*, ChunkReceiveResult> ChunkReceiver<Chu
 }
 
 template <typename ChunkReceiverDataType>
-inline void ChunkReceiver<ChunkReceiverDataType>::release(const mepoo::ChunkHeader* const chunkHeader) noexcept
+inline void ChunkReceiver<ChunkReceiverDataType>::release(UsedChunk usedChunk) noexcept
 {
-    mepoo::SharedChunk chunk(nullptr);
     // d'tor of SharedChunk will release the memory, we do not have to touch the returned chunk
-    if (!getMembers()->m_chunksInUse.remove(chunkHeader, chunk))
+    if (getMembers()->m_chunksInUse.remove(usedChunk).has_error())
     {
         IOX_REPORT(PoshError::POPO__CHUNK_RECEIVER_INVALID_CHUNK_TO_RELEASE_FROM_USER, iox::er::RUNTIME_ERROR);
     }

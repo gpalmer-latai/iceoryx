@@ -20,8 +20,9 @@
 #include "iceoryx_posh/mepoo/mepoo_config.hpp"
 #include "iox/assertions.hpp"
 #include "iox/bump_allocator.hpp"
+#include "iceoryx_hoofs/testing/error_reporting/testing_error_handler.hpp"
+#include "iceoryx_hoofs/testing/testing_logger.hpp"
 
-#include "test.hpp"
 
 namespace
 {
@@ -34,7 +35,7 @@ class UsedChunkList_test : public Test
   public:
     void SetUp() override
     {
-        static constexpr uint32_t NUM_CHUNKS_IN_POOL = 100U;
+        static constexpr uint32_t NUM_CHUNKS_IN_POOL = 100010U;
         static constexpr uint64_t CHUNK_SIZE = 128U;
         MePooConfig mempoolconf;
         mempoolconf.addMemPool({CHUNK_SIZE, NUM_CHUNKS_IN_POOL});
@@ -75,19 +76,22 @@ class UsedChunkList_test : public Test
 
     MemoryManager memoryManager;
 
-    static constexpr uint32_t USED_CHUNK_LIST_CAPACITY{10U};
+    static constexpr uint32_t USED_CHUNK_LIST_CAPACITY{100000U};
     UsedChunkList<USED_CHUNK_LIST_CAPACITY> sut;
 
   private:
     static constexpr size_t MEGABYTE = 1U << 20U;
-    static constexpr size_t MEMORY_SIZE = 4U * MEGABYTE;
+    static constexpr size_t MEMORY_SIZE = 40U * MEGABYTE;
     std::unique_ptr<char[]> m_memory{new char[MEMORY_SIZE]};
 };
 
 TEST_F(UsedChunkList_test, OneChunkCanBeAdded)
 {
     ::testing::Test::RecordProperty("TEST_ID", "fe1ee816-b0a6-4468-9652-b0b32e310960");
-    EXPECT_TRUE(sut.insert(getChunkFromMemoryManager()).has_value());
+    auto maybeUsedChunk = sut.insert(getChunkFromMemoryManager());
+    ASSERT_TRUE(maybeUsedChunk.has_value());
+    EXPECT_EQ(maybeUsedChunk.value().listIndex, 0U);
+    // EXPECT_TRUE(sut.insert(getChunkFromMemoryManager()).has_value());
 }
 
 TEST_F(UsedChunkList_test, AddSameChunkTwiceWorks)
@@ -97,7 +101,7 @@ TEST_F(UsedChunkList_test, AddSameChunkTwiceWorks)
     auto usedChunk1 = sut.insert(chunk).expect("Previous test case 'OneChunkCanBeAdded' assures this works");
     auto maybeUsedChunk2 = sut.insert(chunk);
     EXPECT_TRUE(maybeUsedChunk2.has_value());
-    EXPECT_TRUE(maybeUsedChunk2.value().getChunkHeader() == usedChunk1.getChunkHeader());
+    EXPECT_TRUE(maybeUsedChunk2.value().chunkHeader == usedChunk1.chunkHeader);
 }
 
 TEST_F(UsedChunkList_test, MultipleChunksCanBeAdded)
@@ -127,14 +131,13 @@ TEST_F(UsedChunkList_test, OneChunkCanBeRemoved)
 {
     ::testing::Test::RecordProperty("TEST_ID", "50ffb5df-59ef-4dd4-a2a6-c7ad342c24ae");
     auto chunk = getChunkFromMemoryManager();
-    auto chunkHeader = chunk.getChunkHeader();
     auto maybeUsedChunk = sut.insert(chunk);
     ASSERT_TRUE(maybeUsedChunk.has_value());
     auto usedChunk = std::move(maybeUsedChunk).value();
 
-    SharedChunk removedChunk;
-    EXPECT_FALSE(sut.remove(usedChunk, removedChunk).has_error());
-    EXPECT_TRUE(removedChunk);
+    auto maybeSharedChunk = sut.remove(usedChunk);
+    ASSERT_TRUE(maybeSharedChunk.has_value());
+    EXPECT_TRUE(maybeSharedChunk.value());
 
     checkIfEmpty();
 }
@@ -143,7 +146,6 @@ TEST_F(UsedChunkList_test, RemoveSameChunkAddedTwiceWorks)
 {
     ::testing::Test::RecordProperty("TEST_ID", "5d87cd89-d413-44e9-b728-472eef78a8f9");
     auto chunk = getChunkFromMemoryManager();
-    auto chunkHeader = chunk.getChunkHeader();
 
     auto usedChunk1 = sut.insert(chunk).expect("Failed first insertion of chunk");
     auto usedChunk2 = sut.insert(chunk).expect("Failed second insertion of chunk");
@@ -161,17 +163,16 @@ TEST_F(UsedChunkList_test, RemoveSameChunkAddedTwiceWorks)
 TEST_F(UsedChunkList_test, MultipleChunksCanBeRemoved)
 {
     ::testing::Test::RecordProperty("TEST_ID", "13dd689b-d0b4-4d30-a154-0b8a9e7de5e1");
-    std::vector<ChunkHeader*> chunkHeaderInUse;
+    std::vector<UsedChunk> usedChunks;
     createMultipleChunks(3U, [&](SharedChunk&& chunk) {
-        chunkHeaderInUse.push_back(chunk.getChunkHeader());
-        sut.insert(chunk);
+        usedChunks.push_back(sut.insert(chunk).expect("Chunk insertion failed unexpectedly."));
     });
 
-    for (auto chunkHeader : chunkHeaderInUse)
+    for (auto usedChunk : usedChunks)
     {
-        SharedChunk removedChunk;
-        EXPECT_TRUE(sut.remove(chunkHeader, removedChunk));
-        EXPECT_TRUE(removedChunk);
+        auto maybeSharedChunk = sut.remove(usedChunk);
+        ASSERT_TRUE(maybeSharedChunk.has_value());
+        EXPECT_TRUE(maybeSharedChunk.value());
     }
 
     checkIfEmpty();
@@ -288,7 +289,7 @@ TEST_F(UsedChunkList_test, RemoveChunkNotInListDoesNotRemoveOtherChunk)
     auto chunk = getChunkFromMemoryManager();
     auto chunkHeader = chunk.getChunkHeader();
     UsedChunk chunkNotInList{chunkHeader, 0U};
-    EXPECT_TRUE(sut.remove(chunkHeader, chunkNotInList).has_error());
+    EXPECT_TRUE(sut.remove(chunkNotInList).has_error());
 
     for (auto usedChunk : usedChunks)
     {
@@ -313,7 +314,6 @@ TEST_F(UsedChunkList_test, RemovingChunkFromListLetsTheSharedChunkReturnOwnershi
     ::testing::Test::RecordProperty("TEST_ID", "058ded9f-fa74-4a37-a2c1-3a9511f3153d");
     {
         auto chunk = getChunkFromMemoryManager();
-        auto chunkHeader = chunk.getChunkHeader();
         auto usedChunk = sut.insert(chunk).expect("Chunk insertion failed unexpectedly.");
 
         sut.remove(usedChunk).expect("Chunk removal failed unexpectedly.");
@@ -334,4 +334,7 @@ TEST_F(UsedChunkList_test, CallingCleanupReleasesAllChunks)
     EXPECT_THAT(memoryManager.getMemPoolInfo(0U).m_usedChunks, Eq(0U));
     checkIfEmpty();
 }
+
+// TODO Concurrency tests
+
 } // namespace

@@ -28,33 +28,49 @@ namespace internal
 {
 template <typename TransmissionInterface, typename T, typename H>
 inline SmartChunkPrivateData<TransmissionInterface, T, H>::SmartChunkPrivateData(
-    iox::unique_ptr<T>&& smartChunkUniquePtr, TransmissionInterface& producer) noexcept
-    : smartChunkUniquePtr(std::move(smartChunkUniquePtr))
+    UsedChunk usedChunk, iox::unique_ptr<T>&& smartChunkUniquePtr, TransmissionInterface& producer) noexcept
+    : usedChunk(usedChunk)
+    , smartChunkUniquePtr(std::move(smartChunkUniquePtr))
     , producerRef(producer)
 {
 }
 
 template <typename TransmissionInterface, typename T, typename H>
 inline SmartChunkPrivateData<TransmissionInterface, const T, H>::SmartChunkPrivateData(
-    iox::unique_ptr<const T>&& smartChunkUniquePtr) noexcept
-    : smartChunkUniquePtr(std::move(smartChunkUniquePtr))
+    UsedChunk usedChunk, iox::unique_ptr<const T>&& smartChunkUniquePtr) noexcept
+    : usedChunk(usedChunk)
+    , smartChunkUniquePtr(std::move(smartChunkUniquePtr))
 {
 }
 } // namespace internal
 
 template <typename TransmissionInterface, typename T, typename H>
 template <typename S, typename>
-inline SmartChunk<TransmissionInterface, T, H>::SmartChunk(iox::unique_ptr<T>&& smartChunkUniquePtr,
+inline SmartChunk<TransmissionInterface, T, H>::SmartChunk(const UsedChunk usedChunk,
+                                                           iox::function<typename iox::unique_ptr<T>::DeleterType>&& chunkReleaseCallback,
                                                            TransmissionInterface& producer) noexcept
-    : m_members({std::move(smartChunkUniquePtr), producer})
+    : m_members({
+        usedChunk, 
+        iox::unique_ptr<T>(
+            static_cast<T*>(static_cast<mepoo::ChunkHeader*>(usedChunk.chunkHeader)->userPayload()), 
+            std::move(chunkReleaseCallback)), 
+        producer})
 {
+    static_assert(std::is_same_v<S, T>, "Dummy template parameter S is provided to support SFINAE, but must always remain set to T.");
 }
 
 template <typename TransmissionInterface, typename T, typename H>
 template <typename S, typename>
-inline SmartChunk<TransmissionInterface, T, H>::SmartChunk(iox::unique_ptr<T>&& smartChunkUniquePtr) noexcept
-    : m_members(std::move(smartChunkUniquePtr))
+inline SmartChunk<TransmissionInterface, T, H>::SmartChunk(const UsedChunk usedChunk,
+                                                           iox::function<typename iox::unique_ptr<T>::DeleterType>&& chunkReleaseCallback) noexcept
+    : m_members({
+        usedChunk, 
+        iox::unique_ptr<T>(
+            static_cast<T*>(static_cast<mepoo::ChunkHeader*>(usedChunk.chunkHeader)->userPayload()), 
+            std::move(chunkReleaseCallback))})
+
 {
+    static_assert(std::is_same_v<S, T>, "Dummy template parameter S is provided to support SFINAE, but must always remain set to T.");
 }
 
 template <typename TransmissionInterface, typename T, typename H>
@@ -70,14 +86,18 @@ inline const T* SmartChunk<TransmissionInterface, T, H>::operator->() const noex
 }
 
 template <typename TransmissionInterface, typename T, typename H>
-inline T& SmartChunk<TransmissionInterface, T, H>::operator*() noexcept
+template <typename S, typename>
+inline S& SmartChunk<TransmissionInterface, T, H>::operator*() noexcept
 {
+    static_assert(std::is_same_v<S, T>, "Dummy template parameter S is provided to support SFINAE, but must always remain set to T.");
     return *get();
 }
 
 template <typename TransmissionInterface, typename T, typename H>
-inline const T& SmartChunk<TransmissionInterface, T, H>::operator*() const noexcept
+template <typename S, typename>
+inline const S& SmartChunk<TransmissionInterface, T, H>::operator*() const noexcept
 {
+    static_assert(std::is_same_v<S, T>, "Dummy template parameter S is provided to support SFINAE, but must always remain set to T.");
     return *get();
 }
 
@@ -127,11 +147,12 @@ inline const R& SmartChunk<TransmissionInterface, T, H>::getUserHeader() const n
 }
 
 template <typename TransmissionInterface, typename T, typename H>
-inline T* SmartChunk<TransmissionInterface, T, H>::release() noexcept
+inline UsedChunk SmartChunk<TransmissionInterface, T, H>::release() noexcept
 {
-    auto ptr = iox::unique_ptr<T>::release(std::move(*m_members.smartChunkUniquePtr));
+    // We intentionally do not use the released pointer and instead return the usedChunk.
+    iox::unique_ptr<T>::release(std::move(*m_members.smartChunkUniquePtr));
     m_members.smartChunkUniquePtr.reset();
-    return ptr;
+    return m_members.usedChunk;
 }
 
 } // namespace popo

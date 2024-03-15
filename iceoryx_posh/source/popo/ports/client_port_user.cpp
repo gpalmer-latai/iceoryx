@@ -39,53 +39,39 @@ ClientPortUser::MemberType_t* ClientPortUser::getMembers() noexcept
     return reinterpret_cast<MemberType_t*>(BasePort::getMembers());
 }
 
-expected<RequestHeader*, AllocationError> ClientPortUser::allocateRequest(const uint64_t userPayloadSize,
-                                                                          const uint32_t userPayloadAlignment) noexcept
+expected<UsedChunk, AllocationError> ClientPortUser::allocateRequest(const uint64_t userPayloadSize,
+                                                                     const uint32_t userPayloadAlignment) noexcept
 {
-    auto allocateResult = m_chunkSender.tryAllocate(
+    auto maybeUsedChunk = m_chunkSender.tryAllocate(
         getUniqueID(), userPayloadSize, userPayloadAlignment, sizeof(RequestHeader), alignof(RequestHeader));
 
-    if (allocateResult.has_error())
+    if (maybeUsedChunk.has_error())
     {
-        return err(allocateResult.error());
+        return err(maybeUsedChunk.error());
     }
 
-    auto* requestHeader = new (allocateResult.value()->userHeader())
-        RequestHeader(getMembers()->m_chunkReceiverData.m_uniqueId, RpcBaseHeader::UNKNOWN_CLIENT_QUEUE_INDEX);
+    auto userHeader = static_cast<mepoo::ChunkHeader*>(maybeUsedChunk.value().chunkHeader)->userHeader();
+    new (userHeader) RequestHeader(getMembers()->m_chunkReceiverData.m_uniqueId, RpcBaseHeader::UNKNOWN_CLIENT_QUEUE_INDEX);
 
-    return ok(requestHeader);
+    return ok(maybeUsedChunk.value());
 }
 
-void ClientPortUser::releaseRequest(const RequestHeader* const requestHeader) noexcept
+void ClientPortUser::releaseRequest(const UsedChunk usedChunk) noexcept
 {
-    if (requestHeader != nullptr)
-    {
-        m_chunkSender.release(requestHeader->getChunkHeader());
-    }
-    else
-    {
-        IOX_REPORT(PoshError::POPO__CLIENT_PORT_INVALID_REQUEST_TO_FREE_FROM_USER, iox::er::RUNTIME_ERROR);
-    }
+    m_chunkSender.release(usedChunk);
 }
 
-expected<void, ClientSendError> ClientPortUser::sendRequest(RequestHeader* const requestHeader) noexcept
+expected<void, ClientSendError> ClientPortUser::sendRequest(const UsedChunk usedChunk) noexcept
 {
-    if (requestHeader == nullptr)
-    {
-        IOX_LOG(ERROR, "Attempted to send a nullptr request!");
-        IOX_REPORT(PoshError::POPO__CLIENT_PORT_INVALID_REQUEST_TO_SEND_FROM_USER, iox::er::RUNTIME_ERROR);
-        return err(ClientSendError::INVALID_REQUEST);
-    }
-
     const auto connectRequested = getMembers()->m_connectRequested.load(std::memory_order_relaxed);
     if (!connectRequested)
     {
-        releaseRequest(requestHeader);
+        releaseRequest(usedChunk);
         IOX_LOG(WARN, "Try to send request without being connected!");
         return err(ClientSendError::NO_CONNECT_REQUESTED);
     }
 
-    auto numberOfReceiver = m_chunkSender.send(requestHeader->getChunkHeader());
+    auto numberOfReceiver = m_chunkSender.send(usedChunk);
     if (numberOfReceiver == 0U)
     {
         IOX_LOG(WARN, "Try to send request but server is not available!");
@@ -116,28 +102,21 @@ ConnectionState ClientPortUser::getConnectionState() const noexcept
     return getMembers()->m_connectionState;
 }
 
-expected<const ResponseHeader*, ChunkReceiveResult> ClientPortUser::getResponse() noexcept
+expected<UsedChunk, ChunkReceiveResult> ClientPortUser::getResponse() noexcept
 {
-    auto getChunkResult = m_chunkReceiver.tryGet();
+    auto maybeUsedChunk = m_chunkReceiver.tryGet();
 
-    if (getChunkResult.has_error())
+    if (maybeUsedChunk.has_error())
     {
-        return err(getChunkResult.error());
+        return err(maybeUsedChunk.error());
     }
 
-    return ok(static_cast<const ResponseHeader*>(getChunkResult.value()->userHeader()));
+    return ok(maybeUsedChunk.value());
 }
 
-void ClientPortUser::releaseResponse(const ResponseHeader* const responseHeader) noexcept
+void ClientPortUser::releaseResponse(const UsedChunk usedChunk) noexcept
 {
-    if (responseHeader != nullptr)
-    {
-        m_chunkReceiver.release(responseHeader->getChunkHeader());
-    }
-    else
-    {
-        IOX_REPORT(PoshError::POPO__CLIENT_PORT_INVALID_RESPONSE_TO_RELEASE_FROM_USER, iox::er::RUNTIME_ERROR);
-    }
+    m_chunkReceiver.release(usedChunk);
 }
 
 void ClientPortUser::releaseQueuedResponses() noexcept

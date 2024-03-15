@@ -54,23 +54,24 @@ class PublisherPortUser : public BasePort
     /// @param[in] userHeaderSize, size of the user-header; use iox::CHUNK_NO_USER_HEADER_SIZE to omit a user-header
     /// @param[in] userHeaderAlignment, alignment of the user-header; use iox::CHUNK_NO_USER_HEADER_ALIGNMENT
     /// to omit a user-header
-    /// @return on success pointer to a ChunkHeader which can be used to access the chunk-header, user-header and
-    /// user-payload fields, error if not
-    expected<mepoo::ChunkHeader*, AllocationError> tryAllocateChunk(const uint64_t userPayloadSize,
+    /// @return on success a UsedChunk which can be used to access the chunk-header and release the chunk later.
+    ///         on failure, an AllocationError.
+    expected<UsedChunk, AllocationError> tryAllocateChunk(const uint64_t userPayloadSize,
                                                                     const uint32_t userPayloadAlignment,
                                                                     const uint32_t userHeaderSize = 0U,
                                                                     const uint32_t userHeaderAlignment = 1U) noexcept;
 
     /// @brief Free an allocated chunk without sending it
-    /// @param[in] chunkHeader, pointer to the ChunkHeader to free
-    void releaseChunk(mepoo::ChunkHeader* const chunkHeader) noexcept;
+    /// @param[in] usedChunk, reference to chunk to free.
+    void releaseChunk(const UsedChunk usedChunk) noexcept;
 
     /// @brief Send an allocated chunk to all connected subscriber ports
-    /// @param[in] chunkHeader, pointer to the ChunkHeader to send
-    void sendChunk(mepoo::ChunkHeader* const chunkHeader) noexcept;
+    /// @param[in] usedChunk, reference to chunk to send.
+    void sendChunk(const UsedChunk usedChunk) noexcept;
 
     /// @brief Returns the last sent chunk if there is one
     /// @return pointer to the ChunkHeader of the last sent Chunk if there is one, empty optional if not
+    /// @todo This appears to be unused outside of tests. Should it be removed?
     optional<const mepoo::ChunkHeader*> tryGetPreviousChunk() const noexcept;
 
     /// @brief offer this publiher port in the system

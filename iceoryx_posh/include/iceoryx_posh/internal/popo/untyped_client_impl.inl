@@ -37,60 +37,40 @@ UntypedClientImpl<BaseClientT>::~UntypedClientImpl() noexcept
 }
 
 template <typename BaseClientT>
-expected<void*, AllocationError> UntypedClientImpl<BaseClientT>::loan(const uint64_t payloadSize,
-                                                                      const uint32_t payloadAlignment) noexcept
+expected<Request<void>, AllocationError> UntypedClientImpl<BaseClientT>::loan(const uint64_t payloadSize,
+                                                                              const uint32_t payloadAlignment) noexcept
 {
-    auto allocationResult = port().allocateRequest(payloadSize, payloadAlignment);
-    if (allocationResult.has_error())
+    auto maybeUsedChunk = port().allocateRequest(payloadSize, payloadAlignment);
+    if (maybeUsedChunk.has_error())
     {
-        return err(allocationResult.error());
+        return err(maybeUsedChunk.error());
     }
-
-    return ok(mepoo::ChunkHeader::fromUserHeader(allocationResult.value())->userPayload());
+    auto& usedChunk = maybeUsedChunk.value();
+    return ok(Request<void>{usedChunk, [this, usedChunk](void*){
+        this->port().releaseRequest(usedChunk);
+    }, *this});
 }
 
 template <typename BaseClientT>
-void UntypedClientImpl<BaseClientT>::releaseRequest(void* const requestPayload) noexcept
+expected<void, ClientSendError> UntypedClientImpl<BaseClientT>::send(Request<void>&& request) noexcept
 {
-    auto* chunkHeader = mepoo::ChunkHeader::fromUserPayload(requestPayload);
-    if (chunkHeader != nullptr)
-    {
-        port().releaseRequest(static_cast<RequestHeader*>(chunkHeader->userHeader()));
-    }
+    // take the ownership of the chunk from the Request to transfer it to 'sendRequest'
+    auto usedChunk = request.release();
+    return port().sendRequest(usedChunk);
 }
 
 template <typename BaseClientT>
-expected<void, ClientSendError> UntypedClientImpl<BaseClientT>::send(void* const requestPayload) noexcept
+expected<Response<const void>, ChunkReceiveResult> UntypedClientImpl<BaseClientT>::take() noexcept
 {
-    auto* chunkHeader = mepoo::ChunkHeader::fromUserPayload(requestPayload);
-    if (chunkHeader == nullptr)
+    auto maybeUsedChunk = port().getResponse();
+    if (maybeUsedChunk.has_error())
     {
-        return err(ClientSendError::INVALID_REQUEST);
+        return err(maybeUsedChunk.error());
     }
-
-    return port().sendRequest(static_cast<RequestHeader*>(chunkHeader->userHeader()));
-}
-
-template <typename BaseClientT>
-expected<const void*, ChunkReceiveResult> UntypedClientImpl<BaseClientT>::take() noexcept
-{
-    auto responseResult = port().getResponse();
-    if (responseResult.has_error())
-    {
-        return err(responseResult.error());
-    }
-
-    return ok(mepoo::ChunkHeader::fromUserHeader(responseResult.value())->userPayload());
-}
-
-template <typename BaseClientT>
-void UntypedClientImpl<BaseClientT>::releaseResponse(const void* const responsePayload) noexcept
-{
-    const auto* chunkHeader = mepoo::ChunkHeader::fromUserPayload(responsePayload);
-    if (chunkHeader != nullptr)
-    {
-        port().releaseResponse(static_cast<const ResponseHeader*>(chunkHeader->userHeader()));
-    }
+    auto& usedChunk = maybeUsedChunk.value();
+    return ok(Response<const void>{usedChunk, [this, usedChunk](void*){
+        this->port().releaseResponse(usedChunk);
+    }});
 }
 
 } // namespace popo

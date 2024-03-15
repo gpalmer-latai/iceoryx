@@ -63,13 +63,13 @@ class SubscriberPortUser : public BasePort
 
     /// @brief Tries to get the next chunk from the queue. If there is a new one, the ChunkHeader of the oldest chunk in
     /// the queue is returned (FiFo queue)
-    /// @return New chunk header, ChunkReceiveResult on error
+    /// @return UsedChunk, ChunkReceiveResult on error
     /// or if there are no new chunks in the underlying queue
-    expected<const mepoo::ChunkHeader*, ChunkReceiveResult> tryGetChunk() noexcept;
+    expected<UsedChunk, ChunkReceiveResult> tryGetChunk() noexcept;
 
     /// @brief Release a chunk that was obtained with tryGetChunk
-    /// @param[in] chunkHeader, pointer to the ChunkHeader to release
-    void releaseChunk(const mepoo::ChunkHeader* const chunkHeader) noexcept;
+    /// @param[in] usedChunk, reference to the in-use chunk to release.
+    void releaseChunk(UsedChunk usedChunk) noexcept;
 
     /// @brief Release all the chunks that are currently queued up.
     void releaseQueuedChunks() noexcept;

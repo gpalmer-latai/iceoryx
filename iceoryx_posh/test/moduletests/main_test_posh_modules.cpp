@@ -19,7 +19,12 @@
 #include "iceoryx_hoofs/testing/testing_logger.hpp"
 #include "iceoryx_posh/iceoryx_posh_types.hpp"
 
+#if __has_include("test.hpp")
 #include "test.hpp"
+#else
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+#endif // __has_include
 
 int main(int argc, char* argv[])
 {

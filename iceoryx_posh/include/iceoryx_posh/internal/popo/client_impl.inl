@@ -39,18 +39,15 @@ ClientImpl<Req, Res, BaseClientT>::~ClientImpl() noexcept
 template <typename Req, typename Res, typename BaseClientT>
 expected<Request<Req>, AllocationError> ClientImpl<Req, Res, BaseClientT>::loanUninitialized() noexcept
 {
-    auto result = port().allocateRequest(sizeof(Req), alignof(Req));
-    if (result.has_error())
+    auto maybeUsedChunk = port().allocateRequest(sizeof(Req), alignof(Req));
+    if (maybeUsedChunk.has_error())
     {
-        return err(result.error());
+        return err(maybeUsedChunk.error());
     }
-    auto requestHeader = result.value();
-    auto payload = mepoo::ChunkHeader::fromUserHeader(requestHeader)->userPayload();
-    auto request = iox::unique_ptr<Req>(static_cast<Req*>(payload), [this](Req* payload) {
-        auto* requestHeader = iox::popo::RequestHeader::fromPayload(payload);
-        this->port().releaseRequest(requestHeader);
-    });
-    return ok(Request<Req>{std::move(request), *this});
+    auto& usedChunk = maybeUsedChunk.value();
+    return ok(Request<Req>{usedChunk, [this, usedChunk](Req*){
+        this->port().releaseRequest(usedChunk);
+    }, *this});
 }
 
 template <typename Req, typename Res, typename BaseClientT>
@@ -65,26 +62,22 @@ template <typename Req, typename Res, typename BaseClientT>
 expected<void, ClientSendError> ClientImpl<Req, Res, BaseClientT>::send(Request<Req>&& request) noexcept
 {
     // take the ownership of the chunk from the Request to transfer it to 'sendRequest'
-    auto payload = request.release();
-    auto* requestHeader = static_cast<RequestHeader*>(mepoo::ChunkHeader::fromUserPayload(payload)->userHeader());
-    return port().sendRequest(requestHeader);
+    auto usedChunk = request.release();
+    return port().sendRequest(usedChunk);
 }
 
 template <typename Req, typename Res, typename BaseClientT>
 expected<Response<const Res>, ChunkReceiveResult> ClientImpl<Req, Res, BaseClientT>::take() noexcept
 {
-    auto result = port().getResponse();
-    if (result.has_error())
+    auto maybeUsedChunk = port().getResponse();
+    if (maybeUsedChunk.has_error())
     {
-        return err(result.error());
+        return err(maybeUsedChunk.error());
     }
-    auto responseHeader = result.value();
-    auto payload = mepoo::ChunkHeader::fromUserHeader(responseHeader)->userPayload();
-    auto response = iox::unique_ptr<const Res>(static_cast<const Res*>(payload), [this](const Res* payload) {
-        auto* responseHeader = iox::popo::ResponseHeader::fromPayload(payload);
-        this->port().releaseResponse(responseHeader);
-    });
-    return ok(Response<const Res>{std::move(response)});
+    auto& usedChunk = maybeUsedChunk.value();
+    return ok(Response<const Res>{usedChunk, [this, usedChunk](Res*){
+        this->port().releaseResponse(usedChunk);
+    }});
 }
 
 } // namespace popo

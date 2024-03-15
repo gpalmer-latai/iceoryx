@@ -44,13 +44,11 @@ inline expected<Sample<const T, const H>, ChunkReceiveResult> SubscriberImpl<T, 
     if (result.has_error())
     {
         return err(result.error());
-    }se
-    auto userPayloadPtr = static_cast<const T*>(result.value()->userPayload());
-    auto samplePtr = iox::unique_ptr<const T>(userPayloadPtr, [this](const T* userPayload) {
-        auto* chunkHeader = iox::mepoo::ChunkHeader::fromUserPayload(userPayload);
-        this->port().releaseChunk(chunkHeader);
-    });
-    return ok<Sample<const T, const H>>(std::move(samplePtr));
+    }
+    auto& usedChunk = result.value();
+    auto deleter = [this, usedChunk](const T*) { this->port().releaseChunk(usedChunk); };
+    auto sample = Sample<const T, const H>(usedChunk, std::move(deleter));
+    return ok<Sample<const T, const H>>(std::move(sample));
 }
 
 template <typename T, typename H, typename BaseSubscriberType>

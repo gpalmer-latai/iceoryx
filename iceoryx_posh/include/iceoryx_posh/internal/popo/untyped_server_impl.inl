@@ -37,61 +37,43 @@ UntypedServerImpl<BaseServerT>::~UntypedServerImpl() noexcept
 }
 
 template <typename BaseServerT>
-expected<const void*, ServerRequestResult> UntypedServerImpl<BaseServerT>::take() noexcept
+expected<Request<const void>, ServerRequestResult> UntypedServerImpl<BaseServerT>::take() noexcept
 {
-    auto requestResult = port().getRequest();
-    if (requestResult.has_error())
+    auto maybeUsedChunk = port().getResponse();
+    if (maybeUsedChunk.has_error())
     {
-        return err(requestResult.error());
+        return err(maybeUsedChunk.error());
     }
-
-    return ok(mepoo::ChunkHeader::fromUserHeader(requestResult.value())->userPayload());
+    auto& usedChunk = maybeUsedChunk.value();
+    return ok(Request<const void>{usedChunk, [this, usedChunk](const void*){
+        this->port().releaseRequest(usedChunk);
+    }});
 }
 
 template <typename BaseServerT>
-void UntypedServerImpl<BaseServerT>::releaseRequest(const void* const requestPayload) noexcept
-{
-    auto* chunkHeader = mepoo::ChunkHeader::fromUserPayload(requestPayload);
-    if (chunkHeader != nullptr)
-    {
-        port().releaseRequest(static_cast<const RequestHeader*>(chunkHeader->userHeader()));
-    }
-}
-
-template <typename BaseServerT>
-expected<void*, AllocationError> UntypedServerImpl<BaseServerT>::loan(const RequestHeader* const requestHeader,
+expected<Response<void>, AllocationError> UntypedServerImpl<BaseServerT>::loan(const Request<const void>& request,
                                                                       const uint64_t payloadSize,
                                                                       const uint32_t payloadAlignment) noexcept
 {
-    auto allocationResult = port().allocateResponse(requestHeader, payloadSize, payloadAlignment);
-    if (allocationResult.has_error())
+    const auto* requestHeader = &request.getRequestHeader();
+    auto maybeUsedChunk = port().allocateResponse(requestHeader, sizeof(Res), alignof(Res));
+    if (maybeUsedChunk.has_error())
     {
-        return err(allocationResult.error());
+        return err(maybeUsedChunk.error());
     }
 
-    return ok(mepoo::ChunkHeader::fromUserHeader(allocationResult.value())->userPayload());
+    auto& usedChunk = maybeUsedChunk.value();
+    return ok(Response<void>{usedChunk, [this, usedChunk](void*){
+        this->port().releaseResponse(usedChunk);
+    }, *this});
 }
 
 template <typename BaseServerT>
-expected<void, ServerSendError> UntypedServerImpl<BaseServerT>::send(void* const responsePayload) noexcept
+expected<void, ServerSendError> UntypedServerImpl<BaseServerT>::send(Response<void>&& response) noexcept
 {
-    auto* chunkHeader = mepoo::ChunkHeader::fromUserPayload(responsePayload);
-    if (chunkHeader == nullptr)
-    {
-        return err(ServerSendError::INVALID_RESPONSE);
-    }
-
-    return port().sendResponse(static_cast<ResponseHeader*>(chunkHeader->userHeader()));
-}
-
-template <typename BaseServerT>
-void UntypedServerImpl<BaseServerT>::releaseResponse(void* const responsePayload) noexcept
-{
-    auto* chunkHeader = mepoo::ChunkHeader::fromUserPayload(responsePayload);
-    if (chunkHeader != nullptr)
-    {
-        port().releaseResponse(static_cast<ResponseHeader*>(chunkHeader->userHeader()));
-    }
+    // take the ownership of the chunk from the Request to transfer it to 'sendRequest'
+    auto usedChunk = response.release();
+    return port().sendResponse(usedChunk);
 }
 
 } // namespace popo

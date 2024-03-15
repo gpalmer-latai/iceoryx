@@ -42,6 +42,12 @@ enum class AllocationError
     INVALID_PARAMETER_FOR_USER_PAYLOAD_OR_USER_HEADER,
     INVALID_PARAMETER_FOR_REQUEST_HEADER,
 };
+
+enum class ChunkSendResult
+{
+  INVALID_CHUNK_TO_SEND,
+};
+
 } // namespace popo
 
 template <>
@@ -96,41 +102,42 @@ class ChunkSender : public ChunkDistributor<typename ChunkSenderDataType::ChunkD
     /// user-header
     /// @param[in] userHeaderAlignment, alignment of the user-header; use iox::CHUNK_NO_USER_HEADER_ALIGNMENT
     /// to omit a user-header
-    /// @return on success pointer to a ChunkHeader which can be used to access the chunk-header, user-header and
-    /// user-payload fields, error if not
-    expected<mepoo::ChunkHeader*, AllocationError> tryAllocate(const UniquePortId originId,
+    /// @return on success, a UsedChunk which can be used to access the chunk-header and release the chunk later.
+    ///         on failure, an AllocationError
+    expected<UsedChunk, AllocationError> tryAllocate(const UniquePortId originId,
                                                                const uint64_t userPayloadSize,
                                                                const uint32_t userPayloadAlignment,
                                                                const uint32_t userHeaderSize,
                                                                const uint32_t userHeaderAlignment) noexcept;
 
     /// @brief Release an allocated chunk without sending it
-    /// @param[in] chunkHeader, pointer to the ChunkHeader to release
-    void release(const mepoo::ChunkHeader* const chunkHeader) noexcept;
+    /// @param[in] usedChunk, reference to the chunk-in-use to release
+    void release(const UsedChunk usedChunk) noexcept;
 
     /// @brief Send an allocated chunk to all connected ChunkQueuePopper
-    /// @param[in] chunkHeader, pointer to the ChunkHeader to send; the ownership of the pointer is transferred to this
-    /// method
+    /// @param[in] usedChunk, contains a pointer to the ChunkHeader to send; 
+    ///            the ownership of the chunk is transferred to this method
     /// @return the number of receiver the chunk was send to
-    uint64_t send(mepoo::ChunkHeader* const chunkHeader) noexcept;
+    uint64_t send(const UsedChunk usedChunk) noexcept;
 
     /// @brief Send an allocated chunk to a specific ChunkQueuePopper
-    /// @param[in] chunkHeader, pointer to the ChunkHeader to send; the ownership of the pointer is transferred to this
-    /// method
+    /// @param[in] usedChunk, contains a pointer to the ChunkHeader to send; 
+    /// the ownership of the chunk is transferred to this method
     /// @param[in] uniqueQueueId is an unique ID which identifies the queue to which this chunk shall be delivered
     /// @param[in] lastKnownQueueIndex is used for a fast lookup of the queue with uniqueQueueId
     /// @return true when successful, false otherwise
     /// @note This method does not add the chunk to the history
-    bool sendToQueue(mepoo::ChunkHeader* const chunkHeader,
+    bool sendToQueue(const UsedChunk usedChunk,
                      const UniqueId uniqueQueueId,
                      const uint32_t lastKnownQueueIndex) noexcept;
 
     /// @brief Push an allocated chunk to the history without sending it
-    /// @param[in] chunkHeader, pointer to the ChunkHeader to push to the history
-    void pushToHistory(mepoo::ChunkHeader* const chunkHeader) noexcept;
+    /// @param[in] usedChunk, reference to the chunk to push to the history.
+    void pushToHistory(const UsedChunk usedChunk) noexcept;
 
     /// @brief Returns the last sent chunk if there is one
     /// @return pointer to the ChunkHeader of the last sent Chunk if there is one, empty optional if not
+    /// @todo This appears to be unused outside of tests. Should it be removed?
     optional<const mepoo::ChunkHeader*> tryGetPreviousChunk() const noexcept;
 
     /// @brief Release all the chunks that are currently held. Caution: Only call this if the user process is no more
@@ -142,8 +149,8 @@ class ChunkSender : public ChunkDistributor<typename ChunkSenderDataType::ChunkD
     /// @brief Get the SharedChunk from the provided ChunkHeader and do all that is required to send the chunk
     /// @param[in] chunkHeader of the chunk that shall be send
     /// @param[in][out] chunk that corresponds to the chunk header
-    /// @return true if there was a matching chunk with this header, false if not
-    bool getChunkReadyForSend(const mepoo::ChunkHeader* const chunkHeader, mepoo::SharedChunk& chunk) noexcept;
+    /// @return SharedChunk that corresponds to the UsedChunk, ChunkSendResult if not.
+    expected<mepoo::SharedChunk, ChunkSendResult> getChunkReadyForSend(const UsedChunk usedChunk) noexcept;
 
     const MemberType_t* getMembers() const noexcept;
     MemberType_t* getMembers() noexcept;

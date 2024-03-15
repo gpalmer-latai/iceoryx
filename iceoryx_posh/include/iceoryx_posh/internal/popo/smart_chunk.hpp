@@ -32,7 +32,7 @@ namespace internal
 template <typename TransmissionInterface, typename T, typename H>
 struct SmartChunkPrivateData
 {
-    SmartChunkPrivateData(iox::unique_ptr<T>&& smartChunkUniquePtr, TransmissionInterface& producer) noexcept;
+    SmartChunkPrivateData(UsedChunk usedChunk, iox::unique_ptr<T>&& smartChunkUniquePtr, TransmissionInterface& producer) noexcept;
 
     SmartChunkPrivateData(SmartChunkPrivateData&& rhs) noexcept = default;
     SmartChunkPrivateData& operator=(SmartChunkPrivateData&& rhs) noexcept = default;
@@ -41,6 +41,7 @@ struct SmartChunkPrivateData
     SmartChunkPrivateData& operator=(const SmartChunkPrivateData&) = delete;
     ~SmartChunkPrivateData() = default;
 
+    UsedChunk usedChunk;
     optional<iox::unique_ptr<T>> smartChunkUniquePtr;
     std::reference_wrapper<TransmissionInterface> producerRef;
 };
@@ -49,7 +50,7 @@ struct SmartChunkPrivateData
 template <typename TransmissionInterface, typename T, typename H>
 struct SmartChunkPrivateData<TransmissionInterface, const T, H>
 {
-    explicit SmartChunkPrivateData(iox::unique_ptr<const T>&& smartChunkUniquePtr) noexcept;
+    SmartChunkPrivateData(UsedChunk usedChunk, iox::unique_ptr<const T>&& smartChunkUniquePtr) noexcept;
 
     SmartChunkPrivateData(SmartChunkPrivateData&& rhs) noexcept = default;
     SmartChunkPrivateData& operator=(SmartChunkPrivateData&& rhs) noexcept = default;
@@ -58,6 +59,7 @@ struct SmartChunkPrivateData<TransmissionInterface, const T, H>
     SmartChunkPrivateData& operator=(const SmartChunkPrivateData&) = delete;
     ~SmartChunkPrivateData() = default;
 
+    UsedChunk usedChunk;
     optional<iox::unique_ptr<const T>> smartChunkUniquePtr;
 };
 } // namespace internal
@@ -79,6 +81,10 @@ class SmartChunk
     template <typename S, typename TT>
     using ForConsumerOnly = std::enable_if_t<std::is_same<S, TT>::value && std::is_const<TT>::value, S>;
 
+    /// @brief Helper type to enable certain functions in the typed API's.
+    template <typename S>
+    using IsTyped = std::enable_if_t<!std::is_void_v<S>>;
+
     /// @brief Helper type to enable some methods only if a user-header is used
     template <typename R, typename HH>
     using HasUserHeader =
@@ -87,18 +93,18 @@ class SmartChunk
   public:
     /// @brief Constructor for a SmartChunk used by the Producer
     /// @tparam S is a dummy template parameter to enable the constructor only for non-const T
-    /// @param smartChunkUniquePtr is a 'rvalue' to a 'iox::unique_ptr<T>' with to the data of the encapsulated type
-    /// T
+    /// @param usedChunk Reference to the chunks location in the UsedChunkList, needed to release it.
+    /// @param chunkReleaseCallback Callback to be called upon releasing the chunk. Removes it from the UsedChunkList.
     /// @param producer is a reference to the producer to be able to use producer specific methods
     template <typename S = T, typename = ForProducerOnly<S, T>>
-    SmartChunk(iox::unique_ptr<T>&& smartChunkUniquePtr, TransmissionInterface& producer) noexcept;
+    SmartChunk(const UsedChunk usedChunk, iox::function<typename iox::unique_ptr<T>::DeleterType>&& chunkReleaseCallback, TransmissionInterface& producer) noexcept;
 
     /// @brief Constructor for a SmartChunk used by the Consumer
     /// @tparam S is a dummy template parameter to enable the constructor only for const T
-    /// @param smartChunkUniquePtr is a 'rvalue' to a 'iox::unique_ptr<T>' with to the data of the encapsulated type
-    /// T
+    /// @param usedChunk Reference to the chunks location in the UsedChunkList, needed to release it.
+    /// @param chunkReleaseCallback Callback to be called upon releasing the chunk. Removes it from the UsedChunkList.
     template <typename S = T, typename = ForConsumerOnly<S, T>>
-    explicit SmartChunk(iox::unique_ptr<T>&& smartChunkUniquePtr) noexcept;
+    SmartChunk(const UsedChunk usedChunk, iox::function<typename iox::unique_ptr<T>::DeleterType>&& chunkReleaseCallback) noexcept;
 
     ~SmartChunk() noexcept = default;
 
@@ -121,16 +127,21 @@ class SmartChunk
     const T* operator->() const noexcept;
 
     ///
+    /// @tparam S is a dummy template parameter to enable the method for only non-void T.
     /// @brief Provides a reference to the encapsulated type.
-    /// @return A T& to the encapsulated type.
+    /// @return A S& to the encapsulated type.
+    /// @note Disabled 
     ///
-    T& operator*() noexcept;
+    template <typename S = T, typename = IsTyped<S>>
+    S& operator*() noexcept;
 
     ///
+    /// @tparam S is a dummy template parameter to enable the method for only non-void T.
     /// @brief Provides a const reference to the encapsulated type.
-    /// @return A const T& to the encapsulated type.
+    /// @return A const S& to the encapsulated type.
     ///
-    const T& operator*() const noexcept;
+    template <typename S = T, typename = IsTyped<S>>
+    const S& operator*() const noexcept;
 
     ///
     /// @brief Indicates whether the smartChunk is valid, i.e. refers to allocated memory.
@@ -176,9 +187,11 @@ class SmartChunk
     template <typename R = H, typename = HasUserHeader<R, H>>
     const R& getUserHeader() const noexcept;
 
+    /// @brief Release ownership of the chunk.
+    /// @return UsedChunk needed for the caller assuming ownership to release the chunk later.
     /// @note used by the producer to release the chunk ownership from the 'SmartChunk' after publishing the chunk and
     /// therefore preventing the invocation of the custom deleter
-    T* release() noexcept;
+    [[nodiscard]] UsedChunk release() noexcept;
 
 
   protected:

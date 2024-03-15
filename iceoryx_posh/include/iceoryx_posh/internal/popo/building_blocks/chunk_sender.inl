@@ -95,7 +95,7 @@ inline typename ChunkSender<ChunkSenderDataType>::MemberType_t* ChunkSender<Chun
 }
 
 template <typename ChunkSenderDataType>
-inline expected<mepoo::ChunkHeader*, AllocationError>
+inline expected<UsedChunk, AllocationError>
 ChunkSender<ChunkSenderDataType>::tryAllocate(const UniquePortId originId,
                                               const uint64_t userPayloadSize,
                                               const uint32_t userPayloadAlignment,
@@ -123,13 +123,14 @@ ChunkSender<ChunkSenderDataType>::tryAllocate(const UniquePortId originId,
     if (lastChunkChunkHeader && (lastChunkChunkHeader->chunkSize() >= requiredChunkSize))
     {
         auto sharedChunk = lastChunkUnmanaged.cloneToSharedChunk();
-        if (getMembers()->m_chunksInUse.insert(sharedChunk))
+        auto maybeUsedChunk = getMembers()->m_chunksInUse.insert(sharedChunk);
+        if (maybeUsedChunk.has_value())
         {
             auto chunkSize = lastChunkChunkHeader->chunkSize();
             lastChunkChunkHeader->~ChunkHeader();
             new (lastChunkChunkHeader) mepoo::ChunkHeader(chunkSize, chunkSettings);
             lastChunkChunkHeader->setOriginId(originId);
-            return ok(lastChunkChunkHeader);
+            return ok(maybeUsedChunk.value());
         }
         else
         {
@@ -150,45 +151,45 @@ ChunkSender<ChunkSenderDataType>::tryAllocate(const UniquePortId originId,
 
         auto& chunk = getChunkResult.value();
 
-        // if the application allocated too much chunks, return no more chunks
-        if (getMembers()->m_chunksInUse.insert(chunk))
+        // if the application allocated too many chunks, return no more chunks
+        auto maybeUsedChunk = getMembers()->m_chunksInUse.insert(chunk);
+        if (maybeUsedChunk.has_value())
         {
             // END of critical section
             chunk.getChunkHeader()->setOriginId(originId);
-            return ok(chunk.getChunkHeader());
+            return ok(maybeUsedChunk.value());
         }
         else
         {
             // release the allocated chunk
-            chunk = nullptr;
+            chunk.release();
             return err(AllocationError::TOO_MANY_CHUNKS_ALLOCATED_IN_PARALLEL);
         }
     }
 }
 
 template <typename ChunkSenderDataType>
-inline void ChunkSender<ChunkSenderDataType>::release(const mepoo::ChunkHeader* const chunkHeader) noexcept
+inline void ChunkSender<ChunkSenderDataType>::release(const UsedChunk usedChunk) noexcept
 {
-    mepoo::SharedChunk chunk(nullptr);
     // d'tor of SharedChunk will release the memory, we do not have to touch the returned chunk
-    if (!getMembers()->m_chunksInUse.remove(chunkHeader, chunk))
+    if (getMembers()->m_chunksInUse.remove(usedChunk).has_error())
     {
         IOX_REPORT(PoshError::POPO__CHUNK_SENDER_INVALID_CHUNK_TO_FREE_FROM_USER, iox::er::RUNTIME_ERROR);
     }
 }
 
 template <typename ChunkSenderDataType>
-inline uint64_t ChunkSender<ChunkSenderDataType>::send(mepoo::ChunkHeader* const chunkHeader) noexcept
+inline uint64_t ChunkSender<ChunkSenderDataType>::send(const UsedChunk usedChunk) noexcept
 {
     uint64_t numberOfReceiverTheChunkWasDelivered{0};
-    mepoo::SharedChunk chunk(nullptr);
     // BEGIN of critical section, chunk will be lost if the process terminates in this section
-    if (getChunkReadyForSend(chunkHeader, chunk))
+    auto maybeSharedChunk = getChunkReadyForSend(usedChunk);
+    if (maybeSharedChunk.has_value())
     {
-        numberOfReceiverTheChunkWasDelivered = this->deliverToAllStoredQueues(chunk);
+        numberOfReceiverTheChunkWasDelivered = this->deliverToAllStoredQueues(maybeSharedChunk.value());
 
         getMembers()->m_lastChunkUnmanaged.releaseToSharedChunk();
-        getMembers()->m_lastChunkUnmanaged = chunk;
+        getMembers()->m_lastChunkUnmanaged = std::move(maybeSharedChunk).value();
     }
     // END of critical section
 
@@ -196,18 +197,18 @@ inline uint64_t ChunkSender<ChunkSenderDataType>::send(mepoo::ChunkHeader* const
 }
 
 template <typename ChunkSenderDataType>
-inline bool ChunkSender<ChunkSenderDataType>::sendToQueue(mepoo::ChunkHeader* const chunkHeader,
+inline bool ChunkSender<ChunkSenderDataType>::sendToQueue(const UsedChunk usedChunk,
                                                           const UniqueId uniqueQueueId,
                                                           const uint32_t lastKnownQueueIndex) noexcept
 {
-    mepoo::SharedChunk chunk(nullptr);
     // BEGIN of critical section, chunk will be lost if the process terminates in this section
-    if (getChunkReadyForSend(chunkHeader, chunk))
+    auto maybeSharedChunk = getChunkReadyForSend(usedChunk);
+    if (maybeSharedChunk.has_value())
     {
-        auto deliveryResult = this->deliverToQueue(uniqueQueueId, lastKnownQueueIndex, chunk);
+        auto deliveryResult = this->deliverToQueue(uniqueQueueId, lastKnownQueueIndex, maybeSharedChunk.value());
 
         getMembers()->m_lastChunkUnmanaged.releaseToSharedChunk();
-        getMembers()->m_lastChunkUnmanaged = chunk;
+        getMembers()->m_lastChunkUnmanaged = std::move(maybeSharedChunk).value();
 
         return !deliveryResult.has_error();
     }
@@ -217,16 +218,16 @@ inline bool ChunkSender<ChunkSenderDataType>::sendToQueue(mepoo::ChunkHeader* co
 }
 
 template <typename ChunkSenderDataType>
-inline void ChunkSender<ChunkSenderDataType>::pushToHistory(mepoo::ChunkHeader* const chunkHeader) noexcept
+inline void ChunkSender<ChunkSenderDataType>::pushToHistory(const UsedChunk usedChunk) noexcept
 {
-    mepoo::SharedChunk chunk(nullptr);
     // BEGIN of critical section, chunk will be lost if the process terminates in this section
-    if (getChunkReadyForSend(chunkHeader, chunk))
+    auto maybeSharedChunk = getChunkReadyForSend(usedChunk);
+    if (maybeSharedChunk.has_value())
     {
-        this->addToHistoryWithoutDelivery(chunk);
+        this->addToHistoryWithoutDelivery(maybeSharedChunk.value());
 
         getMembers()->m_lastChunkUnmanaged.releaseToSharedChunk();
-        getMembers()->m_lastChunkUnmanaged = chunk;
+        getMembers()->m_lastChunkUnmanaged = std::move(maybeSharedChunk).value();
     }
     // END of critical section
 }
@@ -253,18 +254,19 @@ inline void ChunkSender<ChunkSenderDataType>::releaseAll() noexcept
 }
 
 template <typename ChunkSenderDataType>
-inline bool ChunkSender<ChunkSenderDataType>::getChunkReadyForSend(const mepoo::ChunkHeader* const chunkHeader,
-                                                                   mepoo::SharedChunk& chunk) noexcept
+inline expected<mepoo::SharedChunk, ChunkSendResult> 
+ChunkSender<ChunkSenderDataType>::getChunkReadyForSend(const UsedChunk usedChunk) noexcept
 {
-    if (getMembers()->m_chunksInUse.remove(chunkHeader, chunk))
+    auto maybeSharedChunk = getMembers()->m_chunksInUse.remove(usedChunk);
+    if (maybeSharedChunk.has_value())
     {
-        chunk.getChunkHeader()->setSequenceNumber(getMembers()->m_sequenceNumber++);
-        return true;
+        maybeSharedChunk.value().getChunkHeader()->setSequenceNumber(getMembers()->m_sequenceNumber++);
+        return ok(maybeSharedChunk.value());
     }
     else
     {
         IOX_REPORT(PoshError::POPO__CHUNK_SENDER_INVALID_CHUNK_TO_SEND_FROM_USER, iox::er::RUNTIME_ERROR);
-        return false;
+        return err(ChunkSendResult::INVALID_CHUNK_TO_SEND);
     }
 }
 

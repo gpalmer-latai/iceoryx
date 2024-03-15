@@ -40,42 +40,27 @@ class UntypedServerImpl : public BaseServerT
     UntypedServerImpl& operator=(const UntypedServerImpl&) = delete;
     UntypedServerImpl& operator=(UntypedServerImpl&&) = delete;
 
-    /// @brief Take the request chunk from the top of the receive queue.
-    /// @return The payload pointer of the request chunk taken.
-    /// @details No automatic cleanup of the associated chunk is performed
-    ///          and must be manually done by calling 'releaseRequest'
-    expected<const void*, ServerRequestResult> take() noexcept;
-
-    /// @brief Releases the ownership of the request chunk provided by the payload pointer.
-    /// @param requestPayload pointer to the payload of the chunk to be released
-    /// @details The requestPayload pointer must have been previously provided by 'take'
-    ///          and not have been already released. The chunk must not be accessed afterwards
-    ///          as its memory may have been reclaimed.
-    void releaseRequest(const void* const requestPayload) noexcept;
+    /// @brief Take the Request from the top of the receive queue.
+    /// @return Either a Request or a ServerRequestResult.
+    /// @details The Request takes care of the cleanup. Don't store the raw pointer to the content of the Request, but
+    /// always the whole Request.
+    expected<Request<const void>, ServerRequestResult> take() noexcept;
 
     /// @brief Get a response chunk from loaned shared memory.
-    /// @param[in] requestHeader The requestHeader to which the response belongs to, to determine where to send the
-    /// response
+    /// @param[in] request The request to which the Response belongs to, to determine where to send the response
     /// @param payloadSize The expected payload size of the chunk.
     /// @param payloadAlignment The expected payload alignment of the chunk.
-    /// @return A pointer to the payload of a chunk of memory with the requested size or
-    ///         an AllocationError if no chunk could be loaned.
-    /// @note An AllocationError occurs if no chunk is available in the shared memory.
-    expected<void*, AllocationError> loan(const RequestHeader* const requestHeader,
+    /// @return An instance of the Response that resides in shared memory or an error if unable to allocate memory to
+    /// loan.
+    /// @details The loaned Response is automatically released when it goes out of scope.
+    expected<Response<void>, AllocationError> loan(const Request<const void>& request,
                                           const uint64_t payloadSize,
                                           const uint32_t payloadAlignment) noexcept;
 
-    /// @brief Sends the provided memory chunk as response to the client.
-    /// @param responsePayload Pointer to the payload of the allocated shared memory chunk.
+    /// @brief Sends the given Response and then releases its loan.
+    /// @param response to send.
     /// @return Error if sending was not successful
-    expected<void, ServerSendError> send(void* const responsePayload) noexcept;
-
-    /// @brief Releases the ownership of the response chunk provided by the payload pointer.
-    /// @param responsePayload pointer to the payload of the chunk to be released
-    /// @details The responsePayload pointer must have been previously provided by 'loan'
-    ///          and not have been already released. The chunk must not be accessed afterwards
-    ///          as its memory may have been reclaimed.
-    void releaseResponse(void* const responsePayload) noexcept;
+    expected<void, ServerSendError> send(Response<void>&& response) noexcept;
 
   protected:
     using BaseServerT::port;

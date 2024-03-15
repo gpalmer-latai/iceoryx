@@ -57,7 +57,7 @@ template <uint32_t Capacity>
 expected<mepoo::SharedChunk, UsedChunkRemoveError> UsedChunkList<Capacity>::remove(const UsedChunk usedChunk) noexcept
 {
     // TODO: Should this be an assertion? What about the other error cases?
-    if (usedChunk.listIndex < Capacity)
+    if (usedChunk.listIndex >= Capacity)
     {
         return err(UsedChunkRemoveError::INVALID_INDEX);
     }
@@ -97,7 +97,9 @@ void UsedChunkList<Capacity>::cleanup() noexcept
 template <uint32_t Capacity>
 void UsedChunkList<Capacity>::init() noexcept
 {
-    m_freeList.init(m_freeListStorage, Capacity);
+    // Free list returns indexes within the range [0, capacity] (inclusive)
+    // So we need to subtract one from that capacity.
+    m_freeList.init(reinterpret_cast<freeList_t::Index_t*>(m_freeListStorage), Capacity);
     m_synchronizer.clear(std::memory_order_release);
 }
 

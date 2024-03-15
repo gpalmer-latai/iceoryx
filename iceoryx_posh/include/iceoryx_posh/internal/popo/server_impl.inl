@@ -39,18 +39,15 @@ inline ServerImpl<Req, Res, BaseServerT>::~ServerImpl() noexcept
 template <typename Req, typename Res, typename BaseServerT>
 expected<Request<const Req>, ServerRequestResult> ServerImpl<Req, Res, BaseServerT>::take() noexcept
 {
-    auto result = port().getRequest();
-    if (result.has_error())
+    auto maybeUsedChunk = port().getResponse();
+    if (maybeUsedChunk.has_error())
     {
-        return err(result.error());
+        return err(maybeUsedChunk.error());
     }
-    auto requestHeader = result.value();
-    auto payload = mepoo::ChunkHeader::fromUserHeader(requestHeader)->userPayload();
-    auto request = unique_ptr<const Req>(static_cast<const Req*>(payload), [this](const Req* payload) {
-        auto* requestHeader = iox::popo::RequestHeader::fromPayload(payload);
-        this->port().releaseRequest(requestHeader);
-    });
-    return ok(Request<const Req>{std::move(request)});
+    auto& usedChunk = maybeUsedChunk.value();
+    return ok(Request<const Req>{usedChunk, [this, usedChunk](Req*){
+        this->port().releaseRequest(usedChunk);
+    }});
 }
 
 template <typename Req, typename Res, typename BaseServerT>
@@ -58,18 +55,16 @@ expected<Response<Res>, AllocationError>
 ServerImpl<Req, Res, BaseServerT>::loanUninitialized(const Request<const Req>& request) noexcept
 {
     const auto* requestHeader = &request.getRequestHeader();
-    auto result = port().allocateResponse(requestHeader, sizeof(Res), alignof(Res));
-    if (result.has_error())
+    auto maybeUsedChunk = port().allocateResponse(requestHeader, sizeof(Res), alignof(Res));
+    if (maybeUsedChunk.has_error())
     {
-        return err(result.error());
+        return err(maybeUsedChunk.error());
     }
-    auto responseHeader = result.value();
-    auto payload = mepoo::ChunkHeader::fromUserHeader(responseHeader)->userPayload();
-    auto response = unique_ptr<Res>(static_cast<Res*>(payload), [this](Res* payload) {
-        auto* responseHeader = iox::popo::ResponseHeader::fromPayload(payload);
-        this->port().releaseResponse(responseHeader);
-    });
-    return ok(Response<Res>{std::move(response), *this});
+
+    auto& usedChunk = maybeUsedChunk.value();
+    return ok(Response<Req>{usedChunk, [this, usedChunk](Req*){
+        this->port().releaseResponse(usedChunk);
+    }, *this});
 }
 
 template <typename Req, typename Res, typename BaseServerT>
@@ -84,10 +79,9 @@ expected<Response<Res>, AllocationError> ServerImpl<Req, Res, BaseServerT>::loan
 template <typename Req, typename Res, typename BaseServerT>
 expected<void, ServerSendError> ServerImpl<Req, Res, BaseServerT>::send(Response<Res>&& response) noexcept
 {
-    // take the ownership of the chunk from the Response to transfer it to 'sendResponse'
-    auto payload = response.release();
-    auto* responseHeader = static_cast<ResponseHeader*>(mepoo::ChunkHeader::fromUserPayload(payload)->userHeader());
-    return port().sendResponse(responseHeader);
+    // take the ownership of the chunk from the Request to transfer it to 'sendRequest'
+    auto usedChunk = response.release();
+    return port().sendResponse(usedChunk);
 }
 
 } // namespace popo

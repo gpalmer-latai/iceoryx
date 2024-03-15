@@ -125,7 +125,7 @@ class BaseSubscriber
 
     /// @brief small helper method to unwrap the 'expected<optional<ChunkHeader*>>' from the 'tryGetChunk' method of the
     /// port
-    expected<const mepoo::ChunkHeader*, ChunkReceiveResult> takeChunk() noexcept;
+    expected<UsedChunk, ChunkReceiveResult> takeChunk() noexcept;
 
     void invalidateTrigger(const uint64_t trigger) noexcept;
 

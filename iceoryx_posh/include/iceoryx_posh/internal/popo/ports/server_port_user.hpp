@@ -108,13 +108,13 @@ class ServerPortUser : public BasePort
 
     /// @brief Tries to get the next request from the queue. If there is a new one, the ChunkHeader of the oldest
     /// request in the queue is returned (FiFo queue)
-    /// @return expected that has a new RequestHeader if there are new requests in the underlying queue,
-    /// ServerRequestResult on error
-    expected<const RequestHeader*, ServerRequestResult> getRequest() noexcept;
+    /// @return expected that has a UsedChunk corresponding to a response
+    ///         if there are new responses in the underlying queue, ServerRequestResult on error
+    expected<UsedChunk, ServerRequestResult> getRequest() noexcept;
 
     /// @brief Release a request that was obtained with getRequest
-    /// @param[in] chunkHeader, pointer to the ChunkHeader to release
-    void releaseRequest(const RequestHeader* const requestHeader) noexcept;
+    /// @param[in] usedChunk, reference to the in-use chunk to release.
+    void releaseRequest(const UsedChunk usedChunk) noexcept;
 
     /// @brief Release all the requests that are currently queued up.
     void releaseQueuedRequests() noexcept;
@@ -132,20 +132,20 @@ class ServerPortUser : public BasePort
     /// @param[in] requestHeader, the request header for the corresponding response
     /// @param[in] userPayloadSize, size of the user user-paylaod without additional headers
     /// @param[in] userPayloadAlignment, alignment of the user user-paylaod without additional headers
-    /// @return on success pointer to a ChunkHeader which can be used to access the chunk-header, user-header and
-    /// user-payload fields, error if not
-    expected<ResponseHeader*, AllocationError> allocateResponse(const RequestHeader* const requestHeader,
+    /// @return on success a UsedChunk whose ResponseHeader has been initialized.
+    ///         on failure, an AllocationError.
+    expected<UsedChunk, AllocationError> allocateResponse(const RequestHeader* const requestHeader,
                                                                 const uint64_t userPayloadSize,
                                                                 const uint32_t userPayloadAlignment) noexcept;
 
     /// @brief Releases an allocated response without sending it
-    /// @param[in] chunkHeader, pointer to the ChunkHeader to free
-    void releaseResponse(const ResponseHeader* const responseHeader) noexcept;
+    /// @param[in] usedChunk, reference to chunk to free.
+    void releaseResponse(const UsedChunk usedChunk) noexcept;
 
     /// @brief Send an allocated request chunk to the server port
-    /// @param[in] chunkHeader, pointer to the ChunkHeader to send
+    /// @param[in] usedChunk, reference to chunk to free.
     /// @return ServerSendError if sending was not successful
-    expected<void, ServerSendError> sendResponse(ResponseHeader* const responseHeader) noexcept;
+    expected<void, ServerSendError> sendResponse(const UsedChunk usedChunk) noexcept;
 
     /// @brief offer this server port in the system
     void offer() noexcept;

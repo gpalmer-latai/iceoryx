@@ -74,13 +74,13 @@ class ChunkReceiver : public ChunkQueuePopper<typename ChunkReceiverDataType::Ch
     /// @brief Tries to get the next received chunk. If there is a new one the ChunkHeader of this new chunk is received
     /// The ownerhip of the SharedChunk remains in the ChunkReceiver for being able to cleanup if the user process
     /// disappears
-    /// @return New chunk header, ChunkReceiveResult on error
+    /// @return New UsedChunk, ChunkReceiveResult on error
     /// or if there are no new chunks in the underlying queue
-    expected<const mepoo::ChunkHeader*, ChunkReceiveResult> tryGet() noexcept;
+    expected<UsedChunk, ChunkReceiveResult> tryGet() noexcept;
 
     /// @brief Release a chunk that was obtained with get
-    /// @param[in] chunkHeader, pointer to the ChunkHeader to release
-    void release(const mepoo::ChunkHeader* const chunkHeader) noexcept;
+    /// @param[in] usedChunk, reference to the in-use chunk to release.
+    void release(UsedChunk usedChunk) noexcept;
 
     /// @brief Release all the chunks that are currently held. Caution: Only call this if the user process is no more
     /// running E.g. This cleans up chunks that were held by a user process that died unexpectetly, for avoiding lost

@@ -47,7 +47,7 @@ enum class UsedChunkRemoveError
 /// @brief Encapsulates information identifying a chunk stored in the UsedChunkList.
 struct UsedChunk
 {
-  not_null<const mepoo::ChunkHeader*> chunkHeader;
+  not_null<mepoo::ChunkHeader*> chunkHeader;
   uint32_t listIndex;
 };
 
@@ -102,7 +102,7 @@ class UsedChunkList
   private:
     std::atomic_flag m_synchronizer = ATOMIC_FLAG_INIT;
     DataElement_t m_listData[Capacity];
-    uint32_t m_freeListStorage[Capacity]; 
+    uint8_t m_freeListStorage[freeList_t::requiredIndexMemorySize(Capacity)]; 
     freeList_t m_freeList;
 };
 
