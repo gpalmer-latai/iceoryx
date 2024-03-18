@@ -103,18 +103,19 @@ inline void PortIntrospection<PublisherPort, SubscriberPort>::send() noexcept
 template <typename PublisherPort, typename SubscriberPort>
 inline void PortIntrospection<PublisherPort, SubscriberPort>::sendPortData() noexcept
 {
-    auto maybeChunkHeader = m_publisherPort->tryAllocateChunk(sizeof(PortIntrospectionFieldTopic),
+    auto maybeUsedChunk = m_publisherPort->tryAllocateChunk(sizeof(PortIntrospectionFieldTopic),
                                                               alignof(PortIntrospectionFieldTopic),
                                                               CHUNK_NO_USER_HEADER_SIZE,
                                                               CHUNK_NO_USER_HEADER_ALIGNMENT);
-    if (maybeChunkHeader.has_value())
+    if (maybeUsedChunk.has_value())
     {
-        auto sample = static_cast<PortIntrospectionFieldTopic*>(maybeChunkHeader.value()->userPayload());
+        auto sample = static_cast<PortIntrospectionFieldTopic*>(
+            static_cast<mepoo::ChunkHeader*>(maybeUsedChunk->chunkHeader)->userPayload());
         new (sample) PortIntrospectionFieldTopic();
 
         m_portData.prepareTopic(*sample); // requires internal mutex (blocks
                                           // further introspection events)
-        m_publisherPort->sendChunk(maybeChunkHeader.value());
+        m_publisherPort->sendChunk(maybeUsedChunk.value());
     }
 }
 
@@ -134,7 +135,7 @@ inline void PortIntrospection<PublisherPort, SubscriberPort>::sendThroughputData
 
         m_portData.prepareTopic(*throughputSample); // requires internal mutex (blocks
         // further introspection events)
-        m_publisherPortThroughput->sendChunk(maybeUsedChunk);
+        m_publisherPortThroughput->sendChunk(maybeUsedChunk.value());
     }
 }
 
