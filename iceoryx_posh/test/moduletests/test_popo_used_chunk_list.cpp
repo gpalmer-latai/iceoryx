@@ -22,13 +22,17 @@
 #include "iox/bump_allocator.hpp"
 #include "iceoryx_hoofs/testing/error_reporting/testing_error_handler.hpp"
 #include "iceoryx_hoofs/testing/testing_logger.hpp"
+#include "iox/detail/mpmc_lockfree_queue.hpp"
 
+#include <thread>
+#include <gtest/gtest.h>
 
 namespace
 {
 using namespace ::testing;
 using namespace iox::mepoo;
 using namespace iox::popo;
+using namespace iox::concurrent;
 
 class UsedChunkList_test : public Test
 {
@@ -335,6 +339,113 @@ TEST_F(UsedChunkList_test, CallingCleanupReleasesAllChunks)
     checkIfEmpty();
 }
 
-// TODO Concurrency tests
+TEST_F(UsedChunkList_test, FillingListConcurrentlyWorks)
+{
+    ::testing::Test::RecordProperty("TEST_ID", "2cd7a402-f0cf-4c72-97a5-336b72389dd3");
+    constexpr uint8_t numThreads{8}; 
+    constexpr uint32_t floorNumToInsert{USED_CHUNK_LIST_CAPACITY / numThreads};
+    constexpr uint32_t spilloverNumToInsert{USED_CHUNK_LIST_CAPACITY - (floorNumToInsert * (numThreads - 1))};
+    std::vector<std::thread> workers;
+    for (uint8_t i = 0; i < numThreads; ++i)
+    {
+        workers.emplace_back([&](){
+            uint32_t numToInsert = (i == 0) ? spilloverNumToInsert : floorNumToInsert;
+            createMultipleChunks(numToInsert, [&](SharedChunk&& chunk) {
+                sut.insert(chunk).expect("Chunk insertion failed unexpectedly.");
+            });
+        });
+    }
+    for (auto& worker : workers)
+    {
+        worker.join();
+    }
+
+    // Check that a new insertion fails because the list is full
+    EXPECT_TRUE(sut.insert(getChunkFromMemoryManager()).has_error());
+
+    sut.cleanup();
+    EXPECT_THAT(memoryManager.getMemPoolInfo(0U).m_usedChunks, Eq(0U));
+    checkIfEmpty();
+}
+
+TEST_F(UsedChunkList_test, RemovingFromListConcurrentlyWorks)
+{
+    ::testing::Test::RecordProperty("TEST_ID", "2a473f53-7f40-4608-b05f-cb7d7eb4747a");
+    std::vector<UsedChunk> usedChunks;
+    createMultipleChunks(USED_CHUNK_LIST_CAPACITY, [&](SharedChunk&& chunk) {
+        usedChunks.push_back(sut.insert(chunk).expect(("Chunk insertion failed unexpectedly.")));
+    });
+    
+    constexpr uint8_t numThreads{8}; 
+    constexpr uint64_t floorNumToRemove{USED_CHUNK_LIST_CAPACITY / numThreads};
+    std::vector<std::thread> workers;
+    for (uint64_t i = 0; i < numThreads; ++i)
+    {
+        workers.emplace_back([this, &usedChunks, i](){
+            auto startIter = usedChunks.begin() + (i * floorNumToRemove);
+            auto endIter = ((i+1) == numThreads) ? usedChunks.end() : (usedChunks.begin() + ((i+1) * floorNumToRemove));
+            while (startIter != endIter)
+            {
+                EXPECT_TRUE(sut.remove(*startIter++).has_value());
+            }
+        });
+    }
+    for (auto& worker : workers)
+    {
+        worker.join();
+    }
+
+    EXPECT_THAT(memoryManager.getMemPoolInfo(0U).m_usedChunks, Eq(0U));
+    checkIfEmpty();
+}
+
+TEST_F(UsedChunkList_test, AddingAndRemovingFromListConcurrentlyWorks)
+{
+    ::testing::Test::RecordProperty("TEST_ID", "adc0d9e9-9a6a-468d-86e5-a6cc7d8a54be");
+    
+    MpmcLockFreeQueue<UsedChunk, USED_CHUNK_LIST_CAPACITY> usedChunkQueue;
+
+    std::atomic<bool> producerDoneInserting{false};
+    std::thread producerThread([&](){
+        for (uint64_t numChunksInserted = 0; numChunksInserted < USED_CHUNK_LIST_CAPACITY; ++numChunksInserted)
+        {
+            EXPECT_TRUE(
+                usedChunkQueue.tryPush(
+                    sut.insert(
+                        getChunkFromMemoryManager()
+                    ).expect("Chunk insertion failed unexpectedly")
+                ));
+        }
+        producerDoneInserting.store(true);
+    });
+    
+    std::thread consumerThread([&](){
+        for (auto maybeUsedChunk = usedChunkQueue.pop(); 
+            maybeUsedChunk.has_value() || !producerDoneInserting.load(); 
+            maybeUsedChunk = usedChunkQueue.pop())
+        {
+            if (maybeUsedChunk.has_value())
+            {
+                EXPECT_TRUE(sut.remove(maybeUsedChunk.value()).has_value());
+            }
+        }
+        // Producer may have added another element and finished between update and check step.
+        for (auto maybeUsedChunk = usedChunkQueue.pop(); 
+            maybeUsedChunk.has_value(); 
+            maybeUsedChunk = usedChunkQueue.pop())
+        {
+            if (maybeUsedChunk.has_value())
+            {
+                EXPECT_TRUE(sut.remove(maybeUsedChunk.value()).has_value());
+            }
+        }
+    });
+
+    producerThread.join();
+    consumerThread.join();
+
+    EXPECT_THAT(memoryManager.getMemPoolInfo(0U).m_usedChunks, Eq(0U));
+    checkIfEmpty();
+}
 
 } // namespace

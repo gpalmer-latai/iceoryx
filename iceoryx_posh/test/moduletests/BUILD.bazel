@@ -14,6 +14,29 @@ cc_test(
     }),
     deps = [
         "//iceoryx_posh",
-        "//iceoryx_hoofs:iceoryx_hoofs_testing"
+        "//iceoryx_hoofs:iceoryx_hoofs_testing",
+        "@googletest//:gtest",
+    ],
+)
+
+cc_test(
+    name = "test_popo_chunk_receiver",
+    srcs = [
+        "main_test_posh_modules.cpp",
+        "test_popo_chuk_receiver.cpp",
+    ],
+    linkopts = select({
+        "//iceoryx_platform:linux": ["-ldl"],
+        "//iceoryx_platform:mac": [],
+        "//iceoryx_platform:qnx": [],
+        "//iceoryx_platform:unix": [],
+        "//iceoryx_platform:win": [],
+        "//conditions:default": ["-ldl"],
+    }),
+    deps = [
+        "//iceoryx_posh",
+        "//iceoryx_hoofs:iceoryx_hoofs_testing",
+        "//iceoryx_posh:iceoryx_posh_testing",
+        "@googletest//:gtest",
     ],
 )
