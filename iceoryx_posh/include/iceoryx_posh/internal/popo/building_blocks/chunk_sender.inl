@@ -162,7 +162,7 @@ ChunkSender<ChunkSenderDataType>::tryAllocate(const UniquePortId originId,
         else
         {
             // release the allocated chunk
-            chunk.release();
+            chunk = nullptr;
             return err(AllocationError::TOO_MANY_CHUNKS_ALLOCATED_IN_PARALLEL);
         }
     }
