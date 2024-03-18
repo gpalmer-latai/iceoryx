@@ -27,7 +27,9 @@
 #include "iceoryx_hoofs/testing/error_reporting/testing_support.hpp"
 #include "iceoryx_hoofs/testing/fatal_failure.hpp"
 #include "iox/assertions.hpp"
-#include "test.hpp"
+
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 namespace
 {
@@ -257,42 +259,20 @@ TEST_F(ClientPort_test, AllocateRequestDoesNotFailAndUsesTheMempool)
     EXPECT_THAT(getNumberOfUsedChunks(), Eq(1U));
 }
 
-TEST_F(ClientPort_test, ReleaseRequestWithNullptrCallsErrorHandler)
-{
-    ::testing::Test::RecordProperty("TEST_ID", "f21bc4ab-4080-4994-b862-5cb8c8738b46");
-    auto& sut = clientPortWithConnectOnCreate;
-
-    sut.portUser.releaseRequest(nullptr);
-
-    IOX_TESTING_EXPECT_ERROR(iox::PoshError::POPO__CLIENT_PORT_INVALID_REQUEST_TO_FREE_FROM_USER);
-}
-
 TEST_F(ClientPort_test, ReleaseRequestWithValidRequestWorksAndReleasesTheChunkToTheMempool)
 {
     ::testing::Test::RecordProperty("TEST_ID", "d2eb1ec3-78de-453b-bf97-860f3c57362b");
     auto& sut = clientPortWithConnectOnCreate;
     sut.portUser.allocateRequest(USER_PAYLOAD_SIZE, USER_PAYLOAD_ALIGNMENT)
-        .and_then([&](auto& requestHeader) {
+        .and_then([&](auto& usedChunk) {
             EXPECT_THAT(this->getNumberOfUsedChunks(), Eq(1U));
-            sut.portUser.releaseRequest(requestHeader);
+            sut.portUser.releaseRequest(usedChunk);
             EXPECT_THAT(this->getNumberOfUsedChunks(), Eq(0U));
         })
         .or_else([&](auto&) {
             constexpr bool UNREACHABLE{false};
             EXPECT_TRUE(UNREACHABLE);
         });
-}
-
-TEST_F(ClientPort_test, SendRequestWithNullptrOnConnectedClientPortCallsErrorHandler)
-{
-    ::testing::Test::RecordProperty("TEST_ID", "e50da541-7621-46e8-accb-46a6b5d7e69b");
-    auto& sut = clientPortWithConnectOnCreate;
-
-    sut.portUser.sendRequest(nullptr)
-        .and_then([&]() { GTEST_FAIL() << "Expected request not successfully sent"; })
-        .or_else([&](auto error) { EXPECT_THAT(error, Eq(ClientSendError::INVALID_REQUEST)); });
-
-    IOX_TESTING_EXPECT_ERROR(iox::PoshError::POPO__CLIENT_PORT_INVALID_REQUEST_TO_SEND_FROM_USER);
 }
 
 TEST_F(ClientPort_test, SendRequestOnConnectedClientPortEnqueuesRequestToServerQueue)
@@ -302,9 +282,10 @@ TEST_F(ClientPort_test, SendRequestOnConnectedClientPortEnqueuesRequestToServerQ
     auto& sut = clientPortWithConnectOnCreate;
     auto allocateResult = sut.portUser.allocateRequest(USER_PAYLOAD_SIZE, USER_PAYLOAD_ALIGNMENT);
     ASSERT_FALSE(allocateResult.has_error());
-    auto* requestHeader = allocateResult.value();
+    auto chunkHeader = static_cast<iox::mepoo::ChunkHeader*>(allocateResult->chunkHeader);
+    auto requestHeader = static_cast<RequestHeader*>(chunkHeader->userHeader());
     requestHeader->setSequenceId(SEQUENCE_ID);
-    sut.portUser.sendRequest(requestHeader)
+    sut.portUser.sendRequest(*allocateResult)
         .and_then([&]() { GTEST_SUCCEED() << "Request successfully sent"; })
         .or_else([&](auto error) { GTEST_FAIL() << "Expected response to be sent but got error: " << error; });
 
@@ -326,10 +307,9 @@ TEST_F(ClientPort_test,
     auto& sut = clientPortWithoutConnectOnCreate;
     auto allocateResult = sut.portUser.allocateRequest(USER_PAYLOAD_SIZE, USER_PAYLOAD_ALIGNMENT);
     ASSERT_FALSE(allocateResult.has_error());
-    auto* requestHeader = allocateResult.value();
 
     EXPECT_THAT(this->getNumberOfUsedChunks(), Eq(1U));
-    sut.portUser.sendRequest(requestHeader)
+    sut.portUser.sendRequest(*allocateResult)
         .and_then([&]() { GTEST_FAIL() << "Expected request not successfully sent"; })
         .or_else([&](auto error) { EXPECT_THAT(error, Eq(ClientSendError::NO_CONNECT_REQUESTED)); });
     EXPECT_THAT(this->getNumberOfUsedChunks(), Eq(0U));
@@ -343,9 +323,8 @@ TEST_F(ClientPort_test, ConnectAfterPreviousSendRequestCallDoesNotEnqueuesReques
     auto& sut = clientPortWithoutConnectOnCreate;
     auto allocateResult = sut.portUser.allocateRequest(USER_PAYLOAD_SIZE, USER_PAYLOAD_ALIGNMENT);
     ASSERT_FALSE(allocateResult.has_error());
-    auto* requestHeader = allocateResult.value();
 
-    sut.portUser.sendRequest(requestHeader)
+    sut.portUser.sendRequest(*allocateResult)
         .and_then([&]() { GTEST_FAIL() << "Expected request not successfully sent"; })
         .or_else([&](auto error) { EXPECT_THAT(error, Eq(ClientSendError::NO_CONNECT_REQUESTED)); });
 
@@ -392,21 +371,15 @@ TEST_F(ClientPort_test, GetResponseOnConnectedClientPortWithNonEmptyResponseQueu
     sut.responseQueuePusher.push(sharedChunk);
 
     sut.portUser.getResponse()
-        .and_then([&](auto& responseHeader) { EXPECT_THAT(responseHeader->getSequenceId(), Eq(SEQUENCE_ID)); })
+        .and_then([&](auto& usedChunk) { 
+            auto chunkHeader = static_cast<iox::mepoo::ChunkHeader*>(usedChunk.chunkHeader);
+            auto responseHeader = static_cast<const ResponseHeader*>(chunkHeader->userHeader());
+            EXPECT_THAT(responseHeader->getSequenceId(), Eq(SEQUENCE_ID)); 
+        })
         .or_else([&](auto&) {
             constexpr bool UNREACHABLE{false};
             EXPECT_TRUE(UNREACHABLE);
         });
-}
-
-TEST_F(ClientPort_test, ReleaseResponseWithNullptrCallsErrorHandler)
-{
-    ::testing::Test::RecordProperty("TEST_ID", "b6ad4c2a-7c52-45ee-afd3-29c286489311");
-    auto& sut = clientPortWithConnectOnCreate;
-
-    sut.portUser.releaseResponse(nullptr);
-
-    IOX_TESTING_EXPECT_ERROR(iox::PoshError::POPO__CLIENT_PORT_INVALID_RESPONSE_TO_RELEASE_FROM_USER);
 }
 
 TEST_F(ClientPort_test, ReleaseResponseWithValidResponseReleasesChunkToTheMempool)
@@ -422,9 +395,9 @@ TEST_F(ClientPort_test, ReleaseResponseWithValidResponseReleasesChunkToTheMempoo
     sharedChunk.reset();
 
     sut.portUser.getResponse()
-        .and_then([&](auto& responseHeader) {
+        .and_then([&](auto& usedChunk) {
             EXPECT_THAT(this->getNumberOfUsedChunks(), Eq(1U));
-            sut.portUser.releaseResponse(responseHeader);
+            sut.portUser.releaseResponse(usedChunk);
             EXPECT_THAT(this->getNumberOfUsedChunks(), Eq(0U));
         })
         .or_else([&](auto&) {
@@ -716,7 +689,7 @@ TEST_F(ClientPort_test, ReleaseAllChunksWorks)
 
     // produce chunks for the chunk sender
     sut.portUser.allocateRequest(USER_PAYLOAD_SIZE, USER_PAYLOAD_ALIGNMENT)
-        .and_then([&](auto& requestHeader) { EXPECT_FALSE(sut.portUser.sendRequest(requestHeader).has_error()); })
+        .and_then([&](auto& usedChunk) { EXPECT_FALSE(sut.portUser.sendRequest(usedChunk).has_error()); })
         .or_else([&](auto&) {
             constexpr bool UNREACHABLE{false};
             EXPECT_TRUE(UNREACHABLE);
