@@ -29,7 +29,7 @@
 
 #include "iceoryx_hoofs/testing/error_reporting/testing_support.hpp"
 #include "iceoryx_hoofs/testing/fatal_failure.hpp"
-#include "test.hpp"
+#include <gtest/gtest.h>
 
 #include <memory>
 
@@ -93,10 +93,10 @@ TEST_F(SubscriberPortSingleProducer_test, InitialStateNotSubscribed)
 TEST_F(SubscriberPortSingleProducer_test, InitialStateNoChunksAvailable)
 {
     ::testing::Test::RecordProperty("TEST_ID", "11a25a0b-eea6-42f9-8937-955ab014916c");
-    auto maybeChunkHeader = m_sutUserSideSingleProducer.tryGetChunk();
+    auto maybeUsedChunk = m_sutUserSideSingleProducer.tryGetChunk();
 
-    ASSERT_TRUE(maybeChunkHeader.has_error());
-    EXPECT_EQ(maybeChunkHeader.error(), iox::popo::ChunkReceiveResult::NO_CHUNK_AVAILABLE);
+    ASSERT_TRUE(maybeUsedChunk.has_error());
+    EXPECT_EQ(maybeUsedChunk.error(), iox::popo::ChunkReceiveResult::NO_CHUNK_AVAILABLE);
     EXPECT_FALSE(m_sutUserSideSingleProducer.hasNewChunks());
 }
 
