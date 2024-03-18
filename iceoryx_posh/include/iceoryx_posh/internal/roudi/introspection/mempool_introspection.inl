@@ -87,18 +87,19 @@ inline void MemPoolIntrospection<MemoryManager, SegmentManager, PublisherPort>::
     if (m_publisherPort.hasSubscribers())
     {
         uint32_t id = 0U;
-        auto maybeChunkHeader = m_publisherPort.tryAllocateChunk(sizeof(MemPoolIntrospectionInfoContainer),
+        auto maybeUsedChunk = m_publisherPort.tryAllocateChunk(sizeof(MemPoolIntrospectionInfoContainer),
                                                                  alignof(MemPoolIntrospectionInfoContainer),
                                                                  CHUNK_NO_USER_HEADER_SIZE,
                                                                  CHUNK_NO_USER_HEADER_ALIGNMENT);
-        if (maybeChunkHeader.has_error())
+        if (maybeUsedChunk.has_error())
         {
             IOX_LOG(WARN, "Cannot allocate chunk for mempool introspection!");
             IOX_REPORT(PoshError::MEPOO__CANNOT_ALLOCATE_CHUNK, iox::er::RUNTIME_ERROR);
             return;
         }
 
-        auto sample = static_cast<MemPoolIntrospectionInfoContainer*>(maybeChunkHeader.value()->userPayload());
+        auto sample = static_cast<MemPoolIntrospectionInfoContainer*>(
+            static_cast<mepoo::ChunkHeader*>(maybeUsedChunk.value().chunkHeader)->userPayload());
         new (sample) MemPoolIntrospectionInfoContainer;
 
         if (sample->emplace_back())
@@ -143,7 +144,7 @@ inline void MemPoolIntrospection<MemoryManager, SegmentManager, PublisherPort>::
             IOX_REPORT(PoshError::MEPOO__INTROSPECTION_CONTAINER_FULL, iox::er::RUNTIME_ERROR);
         }
 
-        m_publisherPort.sendChunk(maybeChunkHeader.value());
+        m_publisherPort.sendChunk(maybeUsedChunk.value());
     }
 }
 

@@ -121,39 +121,41 @@ inline void PortIntrospection<PublisherPort, SubscriberPort>::sendPortData() noe
 template <typename PublisherPort, typename SubscriberPort>
 inline void PortIntrospection<PublisherPort, SubscriberPort>::sendThroughputData() noexcept
 {
-    auto maybeChunkHeader = m_publisherPortThroughput->tryAllocateChunk(sizeof(PortThroughputIntrospectionFieldTopic),
+    auto maybeUsedChunk = m_publisherPortThroughput->tryAllocateChunk(sizeof(PortThroughputIntrospectionFieldTopic),
                                                                         alignof(PortThroughputIntrospectionFieldTopic),
                                                                         CHUNK_NO_USER_HEADER_SIZE,
                                                                         CHUNK_NO_USER_HEADER_ALIGNMENT);
-    if (maybeChunkHeader.has_value())
+    if (maybeUsedChunk.has_value())
     {
         auto throughputSample =
-            static_cast<PortThroughputIntrospectionFieldTopic*>(maybeChunkHeader.value()->userPayload());
+            static_cast<PortThroughputIntrospectionFieldTopic*>(
+                static_cast<mepoo::ChunkHeader*>(maybeUsedChunk.value().chunkHeader)->userPayload());
         new (throughputSample) PortThroughputIntrospectionFieldTopic();
 
         m_portData.prepareTopic(*throughputSample); // requires internal mutex (blocks
         // further introspection events)
-        m_publisherPortThroughput->sendChunk(maybeChunkHeader.value());
+        m_publisherPortThroughput->sendChunk(maybeUsedChunk);
     }
 }
 
 template <typename PublisherPort, typename SubscriberPort>
 inline void PortIntrospection<PublisherPort, SubscriberPort>::sendSubscriberPortsData() noexcept
 {
-    auto maybeChunkHeader =
+    auto maybeUsedChunk =
         m_publisherPortSubscriberPortsData->tryAllocateChunk(sizeof(SubscriberPortChangingIntrospectionFieldTopic),
                                                              alignof(SubscriberPortChangingIntrospectionFieldTopic),
                                                              CHUNK_NO_USER_HEADER_SIZE,
                                                              CHUNK_NO_USER_HEADER_ALIGNMENT);
-    if (maybeChunkHeader.has_value())
+    if (maybeUsedChunk.has_value())
     {
         auto subscriberPortChangingDataSample =
-            static_cast<SubscriberPortChangingIntrospectionFieldTopic*>(maybeChunkHeader.value()->userPayload());
+            static_cast<SubscriberPortChangingIntrospectionFieldTopic*>(
+                static_cast<mepoo::ChunkHeader*>(maybeUsedChunk.value().chunkHeader)->userPayload());
         new (subscriberPortChangingDataSample) SubscriberPortChangingIntrospectionFieldTopic();
 
         m_portData.prepareTopic(*subscriberPortChangingDataSample); // requires internal mutex (blocks
         // further introspection events)
-        m_publisherPortSubscriberPortsData->sendChunk(maybeChunkHeader.value());
+        m_publisherPortSubscriberPortsData->sendChunk(maybeUsedChunk.value());
     }
 }
 

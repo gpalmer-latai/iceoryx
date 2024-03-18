@@ -1107,11 +1107,12 @@ void PortManager::publishServiceRegistry() noexcept
                           alignof(ServiceRegistry),
                           CHUNK_NO_USER_HEADER_SIZE,
                           CHUNK_NO_USER_HEADER_ALIGNMENT)
-        .and_then([&](auto& chunk) {
+        .and_then([&](auto& usedChunk) {
             // It's ok to copy as the modifications happen in the same thread and not concurrently
-            new (chunk->userPayload()) ServiceRegistry(m_serviceRegistry);
+            new (static_cast<mepoo::ChunkHeader*>(usedChunk.chunkHeader)->userPayload()) 
+            ServiceRegistry(m_serviceRegistry);
 
-            publisher.sendChunk(chunk);
+            publisher.sendChunk(usedChunk);
         })
         .or_else([](auto&) { IOX_LOG(WARN, "Could not allocate a chunk for the service registry!"); });
 }

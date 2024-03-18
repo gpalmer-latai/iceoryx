@@ -102,13 +102,14 @@ inline void ProcessIntrospection<PublisherPort>::send() noexcept
     std::lock_guard<std::mutex> guard(m_mutex);
     if (m_processListNewData)
     {
-        auto maybeChunkHeader = m_publisherPort->tryAllocateChunk(sizeof(ProcessIntrospectionFieldTopic),
+        auto maybeUsedChunk = m_publisherPort->tryAllocateChunk(sizeof(ProcessIntrospectionFieldTopic),
                                                                   alignof(ProcessIntrospectionFieldTopic),
                                                                   CHUNK_NO_USER_HEADER_SIZE,
                                                                   CHUNK_NO_USER_HEADER_ALIGNMENT);
-        if (maybeChunkHeader.has_value())
+        if (maybeUsedChunk.has_value())
         {
-            auto sample = static_cast<ProcessIntrospectionFieldTopic*>(maybeChunkHeader.value()->userPayload());
+            auto sample = static_cast<ProcessIntrospectionFieldTopic*>(
+                static_cast<mepoo::ChunkHeader*>(maybeUsedChunk.value().chunkHeader)->userPayload());
             new (sample) ProcessIntrospectionFieldTopic;
 
             for (auto& intrData : m_processList)
@@ -117,7 +118,7 @@ inline void ProcessIntrospection<PublisherPort>::send() noexcept
             }
             m_processListNewData = false;
 
-            m_publisherPort->sendChunk(maybeChunkHeader.value());
+            m_publisherPort->sendChunk(maybeUsedChunk.value());
         }
     }
 }

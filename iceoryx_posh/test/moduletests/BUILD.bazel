@@ -23,7 +23,7 @@ cc_test(
     name = "test_popo_chunk_receiver",
     srcs = [
         "main_test_posh_modules.cpp",
-        "test_popo_chuk_receiver.cpp",
+        "test_popo_chunk_receiver.cpp",
     ],
     linkopts = select({
         "//iceoryx_platform:linux": ["-ldl"],
