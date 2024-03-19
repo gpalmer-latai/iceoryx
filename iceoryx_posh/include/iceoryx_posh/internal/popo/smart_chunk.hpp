@@ -18,6 +18,7 @@
 #ifndef IOX_POSH_POPO_SMART_CHUNK_HPP
 #define IOX_POSH_POPO_SMART_CHUNK_HPP
 
+#include "iceoryx_posh/internal/popo/used_chunk_list.hpp"
 #include "iceoryx_posh/mepoo/chunk_header.hpp"
 #include "iox/type_traits.hpp"
 #include "iox/unique_ptr.hpp"

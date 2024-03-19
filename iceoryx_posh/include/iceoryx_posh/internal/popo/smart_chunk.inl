@@ -123,20 +123,20 @@ template <typename TransmissionInterface, typename T, typename H>
 inline add_const_conditionally_t<mepoo::ChunkHeader, T>*
 SmartChunk<TransmissionInterface, T, H>::getChunkHeader() noexcept
 {
-    return mepoo::ChunkHeader::fromUserPayload(m_members.smartChunkUniquePtr->get());
+    return static_cast<mepoo::ChunkHeader*>(m_members.usedChunk.chunkHeader);
 }
 
 template <typename TransmissionInterface, typename T, typename H>
 inline const mepoo::ChunkHeader* SmartChunk<TransmissionInterface, T, H>::getChunkHeader() const noexcept
 {
-    return mepoo::ChunkHeader::fromUserPayload(m_members.smartChunkUniquePtr->get());
+    return static_cast<const mepoo::ChunkHeader*>(m_members.usedChunk.chunkHeader);
 }
 
 template <typename TransmissionInterface, typename T, typename H>
 template <typename R, typename>
 inline add_const_conditionally_t<R, T>& SmartChunk<TransmissionInterface, T, H>::getUserHeader() noexcept
 {
-    return *static_cast<R*>(mepoo::ChunkHeader::fromUserPayload(m_members.smartChunkUniquePtr->get())->userHeader());
+    return *static_cast<R*>(getChunkHeader()->userHeader());
 }
 
 template <typename TransmissionInterface, typename T, typename H>

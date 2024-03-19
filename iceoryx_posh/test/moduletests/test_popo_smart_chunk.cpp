@@ -14,13 +14,16 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#include "test.hpp"
 #include "test_popo_smart_chunk_common.hpp"
+
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 namespace
 {
 using namespace ::testing;
 using namespace test_smart_chunk_common;
+using iox::popo::UsedChunk;
 using ::testing::_;
 
 template <typename T>
