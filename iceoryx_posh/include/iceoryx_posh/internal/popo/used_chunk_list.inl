@@ -61,7 +61,7 @@ expected<mepoo::SharedChunk, UsedChunkRemoveError> UsedChunkList<Capacity>::remo
     {
         return err(UsedChunkRemoveError::INVALID_INDEX);
     }
-    auto chunkRef = m_listData[usedChunk.listIndex];
+    auto& chunkRef = m_listData[usedChunk.listIndex];
     if (chunkRef.isLogicalNullptr())
     {
         return err(UsedChunkRemoveError::CHUNK_ALREADY_FREED);

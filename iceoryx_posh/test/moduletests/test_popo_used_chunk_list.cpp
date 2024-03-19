@@ -253,6 +253,19 @@ TEST_F(UsedChunkList_test, RemoveChunkFromEmptyListIsHandledGracefully)
     EXPECT_EQ(res.error(), UsedChunkRemoveError::CHUNK_ALREADY_FREED);
 }
 
+TEST_F(UsedChunkList_test, RemoveChunkTwiceIsHandledGracefully)
+{
+    ::testing::Test::RecordProperty("TEST_ID", "1094511b-0dbc-4f6e-a2ca-50cfbc7c8295");
+    auto chunk = getChunkFromMemoryManager();
+    auto usedChunk = sut.insert(chunk).expect("Chunk insertion failed unexpectedly");
+
+    EXPECT_TRUE(sut.remove(usedChunk).has_value());
+    
+    auto res = sut.remove(usedChunk);
+    ASSERT_TRUE(res.has_error());
+    EXPECT_EQ(res.error(), UsedChunkRemoveError::CHUNK_ALREADY_FREED);
+}
+
 TEST_F(UsedChunkList_test, RemoveChunkNotInListIsHandledGracefully)
 {
     ::testing::Test::RecordProperty("TEST_ID", "ecca24b5-c526-4c41-b78f-ff34d6e9ee3e");

@@ -20,6 +20,9 @@
 
 #include "iceoryx_hoofs/testing/error_reporting/testing_support.hpp"
 
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+
 namespace iox_test_popo_server_port
 {
 // NOTE tests related to QueueFullPolicy are done in test_client_server.cpp integration test
@@ -270,7 +273,7 @@ TEST_F(ServerPort_test, GetRequestWithOneRequestsResultsInRequestHeader)
     pushRequests(sut.requestQueuePusher, NUMBER_OF_REQUESTS, REQUEST_DATA);
 
     sut.portUser.getRequest()
-        .and_then([&](const auto& req) { EXPECT_THAT(this->getRequestData(req), Eq(REQUEST_DATA)); })
+        .and_then([&](const auto& usedChunk) { EXPECT_THAT(this->getRequestData(usedChunk), Eq(REQUEST_DATA)); })
         .or_else([&](const auto& error) { GTEST_FAIL() << "Expected RequestHeader but got error: " << error; });
 }
 
@@ -303,7 +306,7 @@ TEST_F(ServerPort_test, GetRequestWithOneRequestsButIntermediatelyHavingNoneResu
     pushRequests(sut.requestQueuePusher, NUMBER_OF_REQUESTS, REQUEST_DATA_2);
 
     sut.portUser.getRequest()
-        .and_then([&](const auto& req) { EXPECT_THAT(this->getRequestData(req), Eq(REQUEST_DATA_2)); })
+        .and_then([&](const auto& usedChunk) { EXPECT_THAT(this->getRequestData(usedChunk), Eq(REQUEST_DATA_2)); })
         .or_else([&](const auto& error) { GTEST_FAIL() << "Expected RequestHeader but got error: " << error; });
 }
 
@@ -318,11 +321,11 @@ TEST_F(ServerPort_test, GetRequestWithMultipleRequestsResultsInAsManyRequestHead
     pushRequests(sut.requestQueuePusher, NUMBER_OF_REQUESTS, REQUEST_DATA_BASE);
 
     sut.portUser.getRequest()
-        .and_then([&](const auto& req) { EXPECT_THAT(this->getRequestData(req), Eq(REQUEST_DATA_BASE)); })
+        .and_then([&](const auto& usedChunk) { EXPECT_THAT(this->getRequestData(usedChunk), Eq(REQUEST_DATA_BASE)); })
         .or_else([&](const auto& error) { GTEST_FAIL() << "Expected RequestHeader but got error: " << error; });
 
     sut.portUser.getRequest()
-        .and_then([&](const auto& req) { EXPECT_THAT(this->getRequestData(req), Eq(REQUEST_DATA_BASE + 1)); })
+        .and_then([&](const auto& usedChunk) { EXPECT_THAT(this->getRequestData(usedChunk), Eq(REQUEST_DATA_BASE + 1)); })
         .or_else([&](const auto& error) { GTEST_FAIL() << "Expected RequestHeader but got error: " << error; });
 }
 
@@ -343,7 +346,7 @@ TEST_F(ServerPort_test, GetRequestWithMaximalHeldChunksInParallelResultsInReques
     for (uint64_t i = 0; i < MAX_REQUEST_HELD_IN_PARALLEL; ++i)
     {
         sut.portUser.getRequest()
-            .and_then([&](const auto& req) { EXPECT_THAT(this->getRequestData(req), Eq(REQUEST_DATA_BASE + i)); })
+            .and_then([&](const auto& usedChunk) { EXPECT_THAT(this->getRequestData(usedChunk), Eq(REQUEST_DATA_BASE + i)); })
             .or_else([&](const auto& error) { GTEST_FAIL() << "Expected RequestHeader but got error: " << error; });
     }
 }
@@ -405,19 +408,9 @@ TEST_F(ServerPort_test, ReleaseRequestWithInvalidChunkCallsTheErrorHandler)
 
     auto sharedChunk = getChunkWithInitializedRequestHeaderAndData();
 
-    sut.portUser.releaseRequest(static_cast<const RequestHeader*>(sharedChunk.getChunkHeader()->userHeader()));
+    sut.portUser.releaseRequest(iox::popo::UsedChunk{sharedChunk.getChunkHeader(), 0U});
 
     IOX_TESTING_EXPECT_ERROR(iox::PoshError::POPO__CHUNK_RECEIVER_INVALID_CHUNK_TO_RELEASE_FROM_USER);
-}
-
-TEST_F(ServerPort_test, ReleaseRequestWithNullptrRequestHeaderCallsTheErrorHandler)
-{
-    ::testing::Test::RecordProperty("TEST_ID", "b505019f-ba47-4df4-ba5e-d2d16e5c44cd");
-    auto& sut = serverPortWithOfferOnCreate;
-
-    sut.portUser.releaseRequest(nullptr);
-
-    IOX_TESTING_EXPECT_ERROR(iox::PoshError::POPO__SERVER_PORT_INVALID_REQUEST_TO_RELEASE_FROM_USER);
 }
 
 // END releaseRequest tests
@@ -534,9 +527,9 @@ TEST_F(ServerPort_test,
     for (uint64_t i = 0; i < QUEUE_CAPACITY; ++i)
     {
         sut.portUser.getRequest()
-            .and_then([&](const auto& req) {
-                EXPECT_THAT(this->getRequestData(req), Eq(REQUEST_DATA_BASE + i));
-                sut.portUser.releaseRequest(req);
+            .and_then([&](const auto& usedChunk) {
+                EXPECT_THAT(this->getRequestData(usedChunk), Eq(REQUEST_DATA_BASE + i));
+                sut.portUser.releaseRequest(usedChunk);
             })
             .or_else([&](const auto& error) { GTEST_FAIL() << "Expected RequestHeader but got error: " << error; });
     }
@@ -579,7 +572,8 @@ TEST_F(ServerPort_test,
     pushRequests(sut.requestQueuePusher, NUMBER_OF_REQUESTS);
     auto requestResult = sut.portUser.getRequest();
     ASSERT_FALSE(requestResult.has_error());
-    auto requestHeader = requestResult.value();
+    auto chunkHeader = static_cast<iox::mepoo::ChunkHeader*>(requestResult->chunkHeader);
+    auto requestHeader = static_cast<const RequestHeader*>(chunkHeader->userHeader());
 
     sut.portUser.allocateResponse(requestHeader, INVALID_USER_PAYLOAD_SIZE, INVALID_USER_PAYLOAD_ALIGNMENT)
         .and_then([&](const auto&) {
@@ -631,31 +625,9 @@ TEST_F(ServerPort_test, ReleaseResponseWithInvalidChunkCallsTheErrorHandler)
     IOX_TESTING_EXPECT_ERROR(iox::PoshError::POPO__CHUNK_SENDER_INVALID_CHUNK_TO_FREE_FROM_USER);
 }
 
-TEST_F(ServerPort_test, ReleaseResponseWithWithNullptrResponseHeaderCallsTheErrorHandler)
-{
-    ::testing::Test::RecordProperty("TEST_ID", "ecb40c4d-7b95-4780-9b51-ac1708830453");
-    auto& sut = serverPortWithOfferOnCreate;
-
-    sut.portUser.releaseResponse(nullptr);
-
-    IOX_TESTING_EXPECT_ERROR(iox::PoshError::POPO__SERVER_PORT_INVALID_RESPONSE_TO_FREE_FROM_USER);
-}
-
 // END releaseResponse tests
 
 // BEGIN sendResponse tests
-
-TEST_F(ServerPort_test, SendResponseWithWithNullptrResponseHeaderCallsTheErrorHandler)
-{
-    ::testing::Test::RecordProperty("TEST_ID", "8d0b0a7f-d1ab-4249-b885-cbc6429eab83");
-    auto& sut = serverPortWithOfferOnCreate;
-
-    sut.portUser.sendResponse(nullptr)
-        .and_then([&]() { GTEST_FAIL() << "Expected response not successfully sent"; })
-        .or_else([&](auto error) { EXPECT_THAT(error, Eq(ServerSendError::INVALID_RESPONSE)); });
-
-    IOX_TESTING_EXPECT_ERROR(iox::PoshError::POPO__SERVER_PORT_INVALID_RESPONSE_TO_SEND_FROM_USER);
-}
 
 TEST_F(ServerPort_test, SendResponseWithoutOfferReleasesTheChunkToTheMempool)
 {
@@ -698,9 +670,10 @@ TEST_F(ServerPort_test, SendResponseWithValidClientQueueIdReleasesDeliversToTheC
     addClientQueue(sut);
 
     constexpr uint64_t RESPONSE_DATA{111U};
-    allocateResponseWithRequestHeaderAndThen(sut, [&](const auto, auto res) {
-        new (ChunkHeader::fromUserHeader(res)->userPayload()) int64_t(RESPONSE_DATA);
-        sut.portUser.sendResponse(res)
+    allocateResponseWithRequestHeaderAndThen(sut, [&](const auto, auto responseUsedChunk) {
+        auto chunkHeader = static_cast<iox::mepoo::ChunkHeader*>(responseUsedChunk.chunkHeader);
+        new (chunkHeader->userPayload()) int64_t(RESPONSE_DATA);
+        sut.portUser.sendResponse(responseUsedChunk)
             .and_then([&]() { GTEST_SUCCEED() << "Response successfully sent"; })
             .or_else([&](auto error) { GTEST_FAIL() << "Expected response to be sent but got error: " << error; });
     });

@@ -26,7 +26,8 @@
 #include "iceoryx_posh/mepoo/mepoo_config.hpp"
 #include "iox/assertions.hpp"
 
-#include "test.hpp"
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 namespace iox_test_popo_server_port
 {
@@ -126,10 +127,10 @@ class ServerPort_test : public Test
         return sharedChunk;
     }
 
-    uint64_t getRequestData(const RequestHeader* requestHeader)
+    uint64_t getRequestData(UsedChunk usedChunk)
     {
-        IOX_ENFORCE(requestHeader != nullptr, "requestHeader must not be a nullptr");
-        auto userPayload = ChunkHeader::fromUserHeader(requestHeader)->userPayload();
+        auto chunkHeader = static_cast<iox::mepoo::ChunkHeader*>(usedChunk.chunkHeader);
+        auto userPayload = chunkHeader->userPayload();
         IOX_ENFORCE(userPayload != nullptr, "userPayload must not be a nullptr");
 
         return *static_cast<const uint64_t*>(userPayload);
@@ -159,7 +160,7 @@ class ServerPort_test : public Test
     }
 
     void allocateResponseWithRequestHeaderAndThen(
-        SutServerPort& sut, std::function<void(const RequestHeader* const, ResponseHeader* const)> testFunction)
+        SutServerPort& sut, std::function<void(const RequestHeader* const, iox::popo::UsedChunk responseChunk)> testFunction)
     {
         constexpr uint64_t USER_PAYLOAD_SIZE{8};
         constexpr uint32_t USER_PAYLOAD_ALIGNMENT{8};
@@ -168,11 +169,12 @@ class ServerPort_test : public Test
         pushRequests(sut.requestQueuePusher, NUMBER_OF_REQUESTS);
         auto requestResult = sut.portUser.getRequest();
         ASSERT_FALSE(requestResult.has_error());
-        auto requestHeader = requestResult.value();
+        auto chunkHeader = static_cast<iox::mepoo::ChunkHeader*>(requestResult->chunkHeader);
+        auto requestHeader = static_cast<const RequestHeader*>(chunkHeader->userHeader());
 
         sut.portUser.allocateResponse(requestHeader, USER_PAYLOAD_SIZE, USER_PAYLOAD_ALIGNMENT)
-            .and_then([&](auto& responseHeader) { testFunction(requestHeader, responseHeader); })
-            .or_else([&](const auto& error) { GTEST_FAIL() << "Expected ResponseHeader but got error: " << error; });
+            .and_then([&](auto& responseChunk) { testFunction(requestHeader, responseChunk); })
+            .or_else([&](const auto& error) { GTEST_FAIL() << "Expected Response UsedChunk but got error: " << error; });
     }
 
     static constexpr uint64_t QUEUE_CAPACITY{iox::MAX_REQUESTS_PROCESSED_SIMULTANEOUSLY * 2U};
