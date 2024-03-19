@@ -221,3 +221,49 @@ cc_test(
         "@googletest//:gtest",
     ],
 )
+
+cc_test(
+    name = "test_popo_request",
+    srcs = [
+        "main_test_posh_modules.cpp",
+        "test_popo_request.cpp",
+    ],
+    linkopts = select({
+        "//iceoryx_platform:linux": ["-ldl"],
+        "//iceoryx_platform:mac": [],
+        "//iceoryx_platform:qnx": [],
+        "//iceoryx_platform:unix": [],
+        "//iceoryx_platform:win": [],
+        "//conditions:default": ["-ldl"],
+    }),
+    deps = [
+        ":test_popo_smart_chunk_common",
+        "//iceoryx_posh",
+        "//iceoryx_hoofs:iceoryx_hoofs_testing",
+        "//iceoryx_posh:iceoryx_posh_testing",
+        "@googletest//:gtest",
+    ],
+)
+
+cc_test(
+    name = "test_popo_response",
+    srcs = [
+        "main_test_posh_modules.cpp",
+        "test_popo_response.cpp",
+    ],
+    linkopts = select({
+        "//iceoryx_platform:linux": ["-ldl"],
+        "//iceoryx_platform:mac": [],
+        "//iceoryx_platform:qnx": [],
+        "//iceoryx_platform:unix": [],
+        "//iceoryx_platform:win": [],
+        "//conditions:default": ["-ldl"],
+    }),
+    deps = [
+        ":test_popo_smart_chunk_common",
+        "//iceoryx_posh",
+        "//iceoryx_hoofs:iceoryx_hoofs_testing",
+        "//iceoryx_posh:iceoryx_posh_testing",
+        "@googletest//:gtest",
+    ],
+)
