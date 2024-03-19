@@ -19,8 +19,10 @@
 #include "iox/unique_ptr.hpp"
 
 #include "iceoryx_hoofs/testing/error_reporting/testing_support.hpp"
-#include "test.hpp"
 #include "test_popo_smart_chunk_common.hpp"
+
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 namespace
 {
