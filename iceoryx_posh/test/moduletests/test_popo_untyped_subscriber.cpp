@@ -17,14 +17,21 @@
 
 #include "iceoryx_posh/popo/untyped_subscriber.hpp"
 #include "iceoryx_posh/testing/mocks/chunk_mock.hpp"
-#include "mocks/subscriber_mock.hpp"
 
-#include "test.hpp"
+#if __has_include("mocks/subscriber_mock.hpp")
+#include "mocks/subscriber_mock.hpp"
+#else
+#include "iceoryx_posh/test/mocks/subscriber_mock.hpp"
+#endif
+
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 namespace
 {
 using namespace ::testing;
 using ::testing::_;
+using iox::popo::UsedChunk;
 
 struct DummyData
 {
@@ -148,15 +155,13 @@ TEST_F(UntypedSubscriberTest, TakeReturnsAllocatedMemoryChunk)
     // ===== Setup ===== //
     EXPECT_CALL(sut, takeChunk)
         .Times(1)
-        .WillOnce(Return(ByMove(iox::ok(const_cast<const iox::mepoo::ChunkHeader*>(chunkMock.chunkHeader())))));
+        .WillOnce(Return(ByMove(iox::ok(UsedChunk{chunkMock.chunkHeader(), 0U}))));
     EXPECT_CALL(sut.port(), releaseChunk).Times(AtLeast(1));
     // ===== Test ===== //
-    auto maybeChunk = sut.take();
+    auto maybeSample = sut.take();
     // ===== Verify ===== //
-    ASSERT_FALSE(maybeChunk.has_error());
-    EXPECT_EQ(maybeChunk.value(), chunkMock.chunkHeader()->userPayload());
-    // ===== Cleanup ===== //
-    sut.release(maybeChunk.value());
+    ASSERT_FALSE(maybeSample.has_error());
+    EXPECT_EQ(maybeSample->get(), chunkMock.chunkHeader()->userPayload());
 }
 
 TEST_F(UntypedSubscriberTest, ReleasesQueuedDataViaBaseSubscriber)

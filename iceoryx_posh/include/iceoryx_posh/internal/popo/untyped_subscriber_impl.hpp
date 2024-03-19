@@ -55,7 +55,7 @@ class UntypedSubscriberImpl : public BaseSubscriberType
     /// @details The sample takes care of the cleanup. Don't store the raw pointer to the content of the sample, but
     /// always the whole sample.
     ///
-    expected<Sample<void>, ChunkReceiveResult> take() noexcept;
+    expected<Sample<const void>, ChunkReceiveResult> take() noexcept;
 
   protected:
     using PortType = typename BaseSubscriberType::PortType;

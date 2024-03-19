@@ -1,0 +1,11 @@
+cc_library(
+    name = "subscriber_mock",
+    hdrs = ["subscriber_mock.hpp"],
+    testonly = True,
+    deps = [
+        "//iceoryx_posh",
+        "//iceoryx_hoofs",
+        "@googletest//:gtest",
+    ],
+    visibility = ["//iceoryx_posh/test:__subpackages__"],
+)

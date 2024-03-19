@@ -38,7 +38,7 @@ inline UntypedSubscriberImpl<BaseSubscriberType>::UntypedSubscriberImpl(const ca
 }
 
 template <typename BaseSubscriberType>
-inline expected<Sample<void>, ChunkReceiveResult> UntypedSubscriberImpl<BaseSubscriberType>::take() noexcept
+inline expected<Sample<const void>, ChunkReceiveResult> UntypedSubscriberImpl<BaseSubscriberType>::take() noexcept
 {
     auto result = BaseSubscriber::takeChunk();
     if (result.has_error())
@@ -46,10 +46,9 @@ inline expected<Sample<void>, ChunkReceiveResult> UntypedSubscriberImpl<BaseSubs
         return err(result.error());
     }
     auto& usedChunk = result.value();
-    return ok({usedChunk, [this, usedChunk](const void*) {
+    return ok(Sample<const void>(usedChunk, [this, usedChunk](const void*) {
         this->port().releaseChunk(usedChunk);
-    }});
-
+    }));
 }
 
 template <typename BaseSubscriberType>
