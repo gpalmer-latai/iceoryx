@@ -22,6 +22,13 @@ namespace iox
 {
 namespace popo
 {
+
+inline bool operator==(const UsedChunk& lhs, const UsedChunk& rhs)
+{
+    return static_cast<const mepoo::ChunkHeader*>(lhs.chunkHeader) == static_cast<const mepoo::ChunkHeader*>(rhs.chunkHeader)
+           && lhs.listIndex == rhs.listIndex;
+}
+
 template <uint32_t Capacity>
 constexpr typename UsedChunkList<Capacity>::DataElement_t UsedChunkList<Capacity>::DATA_ELEMENT_LOGICAL_NULLPTR;
 

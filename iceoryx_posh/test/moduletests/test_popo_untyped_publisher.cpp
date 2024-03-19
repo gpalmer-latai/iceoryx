@@ -17,9 +17,15 @@
 
 #include "iceoryx_posh/popo/untyped_publisher.hpp"
 #include "iceoryx_posh/testing/mocks/chunk_mock.hpp"
-#include "mocks/publisher_mock.hpp"
 
-#include "test.hpp"
+#if __has_include("mocks/subscriber_mock.hpp")
+#include "mocks/subscriber_mock.hpp"
+#else
+#include "iceoryx_posh/test/mocks/publisher_mock.hpp"
+#endif
+
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 namespace
 {
@@ -65,7 +71,7 @@ TEST_F(UntypedPublisherTest, LoansChunkWithRequestedSizeWorks)
                                  USER_PAYLOAD_ALIGNMENT,
                                  iox::CHUNK_NO_USER_HEADER_SIZE,
                                  iox::CHUNK_NO_USER_HEADER_ALIGNMENT))
-        .WillOnce(Return(ByMove(iox::ok(chunkMock.chunkHeader()))));
+        .WillOnce(Return(ByMove(iox::ok(iox::popo::UsedChunk{chunkMock.chunkHeader(), 0U}))));
     // ===== Test ===== //
     auto result = sut.loan(USER_PAYLOAD_SIZE, USER_PAYLOAD_ALIGNMENT);
     // ===== Verify ===== //
@@ -85,7 +91,7 @@ TEST_F(UntypedPublisherTest, LoansChunkWithRequestedSizeAndUserHeaderWorks)
     constexpr uint32_t USER_HEADER_ALIGNMENT = alignof(TestUserHeader);
     EXPECT_CALL(portMockWithUserHeader,
                 tryAllocateChunk(USER_PAYLOAD_SIZE, USER_PAYLOAD_ALIGNMENT, USER_HEADER_SIZE, USER_HEADER_ALIGNMENT))
-        .WillOnce(Return(ByMove(iox::ok(chunkMock.chunkHeader()))));
+        .WillOnce(Return(ByMove(iox::ok(iox::popo::UsedChunk{chunkMock.chunkHeader(), 0U}))));
     // ===== Test ===== //
     auto result =
         sutWithUserHeader.loan(USER_PAYLOAD_SIZE, USER_PAYLOAD_ALIGNMENT, USER_HEADER_SIZE, USER_HEADER_ALIGNMENT);
@@ -112,27 +118,39 @@ TEST_F(UntypedPublisherTest, ReleaseDelegatesCallToPort)
 {
     ::testing::Test::RecordProperty("TEST_ID", "e114b083-10c7-403e-a841-a04487a5f1e0");
     constexpr uint64_t ALLOCATION_SIZE = 7U;
+    auto usedChunk = iox::popo::UsedChunk{chunkMock.chunkHeader(), 0U};
     EXPECT_CALL(portMock, tryAllocateChunk(ALLOCATION_SIZE, _, _, _))
-        .WillOnce(Return(ByMove(iox::ok(chunkMock.chunkHeader()))));
+        .WillOnce(Return(ByMove(iox::ok(usedChunk))));
 
     auto result = sut.loan(ALLOCATION_SIZE);
     ASSERT_FALSE(result.has_error());
-    auto chunk = result.value();
 
     // ===== Test ===== //
-    EXPECT_CALL(portMock, releaseChunk(chunkMock.chunkHeader())).Times(1);
-    sut.release(chunk);
+    EXPECT_CALL(portMock, releaseChunk(usedChunk)).Times(1);
     // ===== Verify ===== //
     // ===== Cleanup ===== //
+
+    // releaseChunk is called by the destructor of result.
 }
 
 TEST_F(UntypedPublisherTest, PublishesUserPayloadViaUnderlyingPort)
 {
     ::testing::Test::RecordProperty("TEST_ID", "33479ad8-a7bf-47f9-a9ea-0025fbf1026c");
     // ===== Setup ===== //
+    constexpr uint64_t USER_PAYLOAD_SIZE = 7U;
+    constexpr uint32_t USER_PAYLOAD_ALIGNMENT = 128U;
+    EXPECT_CALL(portMock,
+                tryAllocateChunk(USER_PAYLOAD_SIZE,
+                                 USER_PAYLOAD_ALIGNMENT,
+                                 iox::CHUNK_NO_USER_HEADER_SIZE,
+                                 iox::CHUNK_NO_USER_HEADER_ALIGNMENT))
+        .WillOnce(Return(ByMove(iox::ok(iox::popo::UsedChunk{chunkMock.chunkHeader(), 0U}))));
     EXPECT_CALL(portMock, sendChunk).Times(1);
     // ===== Test ===== //
-    sut.publish(chunkMock.chunkHeader()->userPayload());
+    auto result =
+        sut.loan(USER_PAYLOAD_SIZE, USER_PAYLOAD_ALIGNMENT);
+    ASSERT_FALSE(result.has_error());
+    result->publish();
     // ===== Verify ===== //
     // ===== Cleanup ===== //
 }

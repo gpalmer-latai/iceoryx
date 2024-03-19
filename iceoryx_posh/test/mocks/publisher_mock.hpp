@@ -23,7 +23,8 @@
 #include "iceoryx_posh/popo/sample.hpp"
 #include "iox/expected.hpp"
 
-#include "test.hpp"
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 using namespace ::testing;
 using ::testing::_;
@@ -54,10 +55,10 @@ class MockPublisherPortUser
     }
     MOCK_CONST_METHOD0(getServiceDescription, iox::capro::ServiceDescription());
     MOCK_METHOD4(tryAllocateChunk,
-                 iox::expected<iox::mepoo::ChunkHeader*, iox::popo::AllocationError>(
+                 iox::expected<iox::popo::UsedChunk, iox::popo::AllocationError>(
                      const uint64_t, const uint32_t, const uint32_t, const uint32_t));
-    MOCK_METHOD1(releaseChunk, void(iox::mepoo::ChunkHeader* const));
-    MOCK_METHOD1(sendChunk, void(iox::mepoo::ChunkHeader* const));
+    MOCK_METHOD1(releaseChunk, void(const iox::popo::UsedChunk));
+    MOCK_METHOD1(sendChunk, void(const iox::popo::UsedChunk));
     MOCK_METHOD0(tryGetPreviousChunk, iox::optional<iox::mepoo::ChunkHeader*>());
     MOCK_METHOD0(offer, void());
     MOCK_METHOD0(stopOffer, void());

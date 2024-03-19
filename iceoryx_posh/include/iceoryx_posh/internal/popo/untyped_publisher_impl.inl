@@ -38,14 +38,14 @@ inline UntypedPublisherImpl<BasePublisherType>::UntypedPublisherImpl(PortType&& 
 }
 
 template <typename BasePublisherType>
-inline void UntypedPublisherImpl<BasePublisherType>::publish(Sample<void>&& sample) noexcept
+inline void UntypedPublisherImpl<BasePublisherType>::publish(SampleType&& sample) noexcept
 {
     auto usedChunk = sample.release(); // release the Samples ownership of the chunk before publishing
     port().sendChunk(usedChunk);
 }
 
 template <typename BasePublisherType>
-inline expected<Sample<void>, AllocationError>
+inline expected<typename UntypedPublisherImpl<BasePublisherType>::SampleType, AllocationError>
 UntypedPublisherImpl<BasePublisherType>::loan(const uint64_t userPayloadSize,
                                               const uint32_t userPayloadAlignment,
                                               const uint32_t userHeaderSize,
@@ -57,7 +57,7 @@ UntypedPublisherImpl<BasePublisherType>::loan(const uint64_t userPayloadSize,
         return err(maybeUsedChunk.error());
     }
     auto& usedChunk = maybeUsedChunk.value();
-    return ok(Sample<void>(usedChunk, 
+    return ok(SampleType(usedChunk, 
                            [this, usedChunk](void*) {
                                 this->port().releaseChunk(usedChunk);
                            },

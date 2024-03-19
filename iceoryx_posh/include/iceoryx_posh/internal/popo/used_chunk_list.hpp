@@ -51,6 +51,7 @@ struct UsedChunk
   uint32_t listIndex;
 };
 
+
 /// @brief This class is used to keep track of the chunks currently in use by the application.
 ///        In case the application terminates while holding chunks, this list is used by RouDi to retain ownership of
 ///        the chunks and prevent a chunk leak.

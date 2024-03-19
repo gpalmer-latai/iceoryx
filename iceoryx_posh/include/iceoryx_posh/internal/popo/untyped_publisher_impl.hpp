@@ -19,6 +19,7 @@
 #define IOX_POSH_POPO_UNTYPED_PUBLISHER_IMPL_HPP
 
 #include "iceoryx_posh/internal/popo/base_publisher.hpp"
+#include "iceoryx_posh/internal/popo/publisher_interface.hpp"
 #include "iceoryx_posh/popo/sample.hpp"
 
 namespace iox
@@ -28,9 +29,11 @@ namespace popo
 /// @brief The UntypedPublisherImpl class implements the untyped publisher API
 /// @note Not intended for public usage! Use the 'UntypedPublisher' instead!
 template <typename BasePublisherType = BasePublisher<>>
-class UntypedPublisherImpl : public BasePublisherType
+class UntypedPublisherImpl : public BasePublisherType, private PublisherInterface<void, mepoo::NoUserHeader>
 {
   public:
+    using PublisherInterface<void, mepoo::NoUserHeader>::SampleType;
+
     explicit UntypedPublisherImpl(const capro::ServiceDescription& service,
                                   const PublisherOptions& publisherOptions = PublisherOptions());
 
@@ -49,7 +52,7 @@ class UntypedPublisherImpl : public BasePublisherType
     /// loan.
     /// @details The loaned sample is automatically released when it goes out of scope.
     /// @note An AllocationError occurs if no chunk is available in the shared memory.
-    expected<Sample<void>, AllocationError>
+    expected<SampleType, AllocationError>
     loan(const uint64_t userPayloadSize,
          const uint32_t userPayloadAlignment = iox::CHUNK_DEFAULT_USER_PAYLOAD_ALIGNMENT,
          const uint32_t userHeaderSize = iox::CHUNK_NO_USER_HEADER_SIZE,
@@ -61,7 +64,7 @@ class UntypedPublisherImpl : public BasePublisherType
     /// @note Ownership of the userPayload is transferred to this function. 
     ///       Accessing the underlying pointer after publication is UB.
     ///
-    void publish(Sample<void>&& sample) noexcept;
+    void publish(SampleType&& sample) noexcept override;
 
   protected:
     using PortType = typename BasePublisherType::PortType;

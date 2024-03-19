@@ -63,6 +63,9 @@ class Sample : public SmartChunk<PublisherInterface<T, H>, T, H>
   private:
     template <typename, typename, typename>
     friend class PublisherImpl;
+    
+    template <typename>
+    friend class UntypedPublisherImpl;
 
     /// @note used by the publisher to release the chunk ownership from the 'Sample' after publishing the chunk and
     /// therefore preventing the invocation of the custom deleter
