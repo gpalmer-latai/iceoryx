@@ -41,9 +41,8 @@ PerfTopic IceoryxWait::receivePerfTopic() noexcept
     {
         if (notification->doesOriginateFrom(&m_subscriber))
         {
-            m_subscriber.take().and_then([&](const void* data) {
-                receivedSample = *(static_cast<const PerfTopic*>(data));
-                m_subscriber.release(data);
+            m_subscriber.take().and_then([&](auto& sample) {
+                receivedSample = *(static_cast<const PerfTopic*>(sample.get()));
             });
         }
     }

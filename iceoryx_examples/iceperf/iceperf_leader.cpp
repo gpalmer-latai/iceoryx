@@ -18,7 +18,7 @@
 
 #include "iceperf_leader.hpp"
 #include "iceoryx.hpp"
-#include "iceoryx_c.hpp"
+// #include "iceoryx_c.hpp"
 #include "iceoryx_posh/popo/publisher.hpp"
 #include "iceoryx_posh/popo/subscriber.hpp"
 #include "iceoryx_posh/runtime/posh_runtime.hpp"
@@ -188,12 +188,12 @@ int IcePerfLeader::run() noexcept
         doMeasurement(iceoryx);
     }
 
-    if (m_settings.technology == Technology::ALL || m_settings.technology == Technology::ICEORYX_C_API)
-    {
-        std::cout << std::endl << "******   ICEORYX C API    ********" << std::endl;
-        IceoryxC iceoryxc(PUBLISHER, SUBSCRIBER);
-        doMeasurement(iceoryxc);
-    }
+    // if (m_settings.technology == Technology::ALL || m_settings.technology == Technology::ICEORYX_C_API)
+    // {
+    //     std::cout << std::endl << "******   ICEORYX C API    ********" << std::endl;
+    //     IceoryxC iceoryxc(PUBLISHER, SUBSCRIBER);
+    //     doMeasurement(iceoryxc);
+    // }
 
     if (m_settings.technology == Technology::ALL || m_settings.technology == Technology::ICEORYX_CPP_WAIT_API)
     {

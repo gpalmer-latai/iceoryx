@@ -21,7 +21,7 @@ cc_library(
     srcs = [
         "base.cpp",
         "iceoryx.cpp",
-        "iceoryx_c.cpp",
+        # "iceoryx_c.cpp",
         "iceoryx_wait.cpp",
         "mq.cpp",
         "uds.cpp",
@@ -30,7 +30,7 @@ cc_library(
         "base.hpp",
         "example_common.hpp",
         "iceoryx.hpp",
-        "iceoryx_c.hpp",
+        # "iceoryx_c.hpp",
         "iceoryx_wait.hpp",
         "mq.hpp",
         "topic_data.hpp",
@@ -38,7 +38,9 @@ cc_library(
     ],
     visibility = ["//visibility:private"],
     deps = [
-        "//iceoryx_binding_c",
+        "//iceoryx_hoofs",
+        "//iceoryx_posh",
+        # "//iceoryx_binding_c",
     ],
 )
 
