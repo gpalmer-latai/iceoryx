@@ -68,7 +68,7 @@ expected<Response<const void>, ChunkReceiveResult> UntypedClientImpl<BaseClientT
         return err(maybeUsedChunk.error());
     }
     auto& usedChunk = maybeUsedChunk.value();
-    return ok(Response<const void>{usedChunk, [this, usedChunk](void*){
+    return ok(Response<const void>{usedChunk, [this, usedChunk](const void*){
         this->port().releaseResponse(usedChunk);
     }});
 }

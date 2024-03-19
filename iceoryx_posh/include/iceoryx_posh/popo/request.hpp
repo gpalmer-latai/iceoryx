@@ -68,6 +68,8 @@ class Request
   private:
     template <typename, typename, typename>
     friend class ClientImpl;
+    template <typename>
+    friend class UntypedClientImpl;
     template <typename, typename, typename>
     friend class ServerImpl;
 

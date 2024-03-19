@@ -18,8 +18,8 @@
 #include "iceoryx_posh/popo/untyped_publisher.hpp"
 #include "iceoryx_posh/testing/mocks/chunk_mock.hpp"
 
-#if __has_include("mocks/subscriber_mock.hpp")
-#include "mocks/subscriber_mock.hpp"
+#if __has_include("mocks/publisher_mock.hpp")
+#include "mocks/publisher_mock.hpp"
 #else
 #include "iceoryx_posh/test/mocks/publisher_mock.hpp"
 #endif

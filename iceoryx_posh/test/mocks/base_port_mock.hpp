@@ -19,7 +19,8 @@
 
 #include "iceoryx_posh/internal/popo/ports/base_port.hpp"
 
-#include "test.hpp"
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 using namespace ::testing;
 using ::testing::_;

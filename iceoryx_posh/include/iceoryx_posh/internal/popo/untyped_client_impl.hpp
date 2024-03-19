@@ -20,8 +20,11 @@
 #include "iceoryx_posh/capro/service_description.hpp"
 #include "iceoryx_posh/internal/popo/base_client.hpp"
 #include "iceoryx_posh/popo/client_options.hpp"
+#include "iceoryx_posh/internal/popo/rpc_interface.hpp"
 #include "iceoryx_posh/popo/trigger_handle.hpp"
 #include "iceoryx_posh/runtime/posh_runtime.hpp"
+#include "iceoryx_posh/popo/request.hpp"
+#include "iceoryx_posh/popo/response.hpp"
 
 namespace iox
 {
@@ -30,7 +33,7 @@ namespace popo
 /// @brief The UntypedClientImpl class implements the untyped client API
 /// @note Not intended for public usage! Use the 'UntypedClient' instead!
 template <typename BaseClientT = BaseClient<>>
-class UntypedClientImpl : public BaseClientT
+class UntypedClientImpl : public BaseClientT, private RpcInterface<Request<void>, ClientSendError>
 {
   public:
     explicit UntypedClientImpl(const capro::ServiceDescription& service,
@@ -53,7 +56,7 @@ class UntypedClientImpl : public BaseClientT
     /// @brief Sends the given Request and then releases its loan.
     /// @param request to send.
     /// @return Error if sending was not successful
-    expected<void, ClientSendError> send(Request<void>&& request) noexcept;
+    expected<void, ClientSendError> send(Request<void>&& request) noexcept override;
 
     /// @brief Take the Response from the top of the receive queue.
     /// @return Either a Response or a ChunkReceiveResult.

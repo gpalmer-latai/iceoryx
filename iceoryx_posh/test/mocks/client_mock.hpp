@@ -19,9 +19,15 @@
 
 #include "iceoryx_posh/internal/popo/base_client.hpp"
 #include "iox/expected.hpp"
-#include "mocks/base_port_mock.hpp"
 
-#include "test.hpp"
+#if __has_include("mocks/base_port_mock.hpp")
+#include "mocks/base_port_mock.hpp"
+#else
+#include "iceoryx_posh/test/mocks/base_port_mock.hpp"
+#endif
+
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 using namespace ::testing;
 using ::testing::_;
@@ -46,23 +52,23 @@ class MockClientPortUser : public MockBasePort
         return *this;
     }
 
-    MOCK_METHOD((iox::expected<iox::popo::RequestHeader*, iox::popo::AllocationError>),
+    MOCK_METHOD((iox::expected<iox::popo::UsedChunk, iox::popo::AllocationError>),
                 allocateRequest,
                 (const uint64_t, const uint32_t),
                 (noexcept));
-    MOCK_METHOD(void, releaseRequest, (const iox::popo::RequestHeader* const), (noexcept));
+    MOCK_METHOD(void, releaseRequest, (const iox::popo::UsedChunk), (noexcept));
     MOCK_METHOD((iox::expected<void, iox::popo::ClientSendError>),
                 sendRequest,
-                (iox::popo::RequestHeader* const),
+                (const iox::popo::UsedChunk),
                 (noexcept));
     MOCK_METHOD(void, connect, (), (noexcept));
     MOCK_METHOD(void, disconnect, (), (noexcept));
     MOCK_METHOD(iox::ConnectionState, getConnectionState, (), (const, noexcept));
-    MOCK_METHOD((iox::expected<const iox::popo::ResponseHeader*, iox::popo::ChunkReceiveResult>),
+    MOCK_METHOD((iox::expected<iox::popo::UsedChunk, iox::popo::ChunkReceiveResult>),
                 getResponse,
                 (),
                 (noexcept));
-    MOCK_METHOD(void, releaseResponse, (const iox::popo::ResponseHeader* const), (noexcept));
+    MOCK_METHOD(void, releaseResponse, (const iox::popo::UsedChunk), (noexcept));
     MOCK_METHOD(void, releaseQueuedResponses, (), (noexcept));
     MOCK_METHOD(bool, hasNewResponses, (), (const, noexcept));
     MOCK_METHOD(bool, hasLostResponsesSinceLastCall, (), (noexcept));
