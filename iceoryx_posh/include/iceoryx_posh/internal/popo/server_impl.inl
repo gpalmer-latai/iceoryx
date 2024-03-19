@@ -39,7 +39,7 @@ inline ServerImpl<Req, Res, BaseServerT>::~ServerImpl() noexcept
 template <typename Req, typename Res, typename BaseServerT>
 expected<Request<const Req>, ServerRequestResult> ServerImpl<Req, Res, BaseServerT>::take() noexcept
 {
-    auto maybeUsedChunk = port().getResponse();
+    auto maybeUsedChunk = port().getRequest();
     if (maybeUsedChunk.has_error())
     {
         return err(maybeUsedChunk.error());

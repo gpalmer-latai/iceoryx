@@ -16,9 +16,15 @@
 
 #include "iceoryx_posh/popo/untyped_server.hpp"
 #include "iceoryx_posh/testing/mocks/chunk_mock.hpp"
-#include "mocks/server_mock.hpp"
 
-#include "test.hpp"
+#if __has_include("mocks/server_mock.hpp")
+#include "mocks/server_mock.hpp"
+#else
+#include "iceoryx_posh/test/mocks/server_mock.hpp"
+#endif
+
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 namespace
 {
@@ -62,14 +68,15 @@ TEST_F(UntypedServer_test, TakeCallsUnderlyingPortWithSuccessResult)
 {
     ::testing::Test::RecordProperty("TEST_ID", "0bcaf64f-66d6-4906-ad6e-9bf3ce168c30");
 
-    const iox::expected<const RequestHeader*, ServerRequestResult> getRequestResult =
-        iox::ok<const RequestHeader*>(requestMock.userHeader());
+    auto usedChunk = UsedChunk{requestMock.chunkHeader(), 0U};
+    const iox::expected<UsedChunk, ServerRequestResult> getRequestResult =
+        iox::ok<UsedChunk>(usedChunk);
 
     EXPECT_CALL(sut.mockPort, getRequest()).WillOnce(Return(getRequestResult));
 
     auto takeResult = sut.take();
     ASSERT_FALSE(takeResult.has_error());
-    EXPECT_THAT(takeResult.value(), Eq(requestMock.sample()));
+    EXPECT_THAT(takeResult->get(), Eq(requestMock.sample()));
 }
 
 TEST_F(UntypedServer_test, TakeCallsUnderlyingPortWithErrorResult)
@@ -77,7 +84,7 @@ TEST_F(UntypedServer_test, TakeCallsUnderlyingPortWithErrorResult)
     ::testing::Test::RecordProperty("TEST_ID", "224e93e3-47f4-4533-8fac-9cb7bbb87f08");
 
     constexpr ServerRequestResult SERVER_REQUEST_RESULT{ServerRequestResult::TOO_MANY_REQUESTS_HELD_IN_PARALLEL};
-    const iox::expected<const RequestHeader*, ServerRequestResult> getRequestResult = iox::err(SERVER_REQUEST_RESULT);
+    const iox::expected<UsedChunk, ServerRequestResult> getRequestResult = iox::err(SERVER_REQUEST_RESULT);
 
     EXPECT_CALL(sut.mockPort, getRequest()).WillOnce(Return(getRequestResult));
 
@@ -90,50 +97,68 @@ TEST_F(UntypedServer_test, ReleaseRequestWithValidPayloadPointerCallsUnderlyingP
 {
     ::testing::Test::RecordProperty("TEST_ID", "8b522a1b-e30a-4036-be12-72fe7c7c04f1");
 
-    EXPECT_CALL(sut.mockPort, releaseRequest(requestMock.userHeader())).Times(1);
+    auto usedChunk = UsedChunk{requestMock.chunkHeader(), 0U};
+    const iox::expected<UsedChunk, ServerRequestResult> getRequestResult =
+        iox::ok<UsedChunk>(usedChunk);
 
-    sut.releaseRequest(requestMock.sample());
-}
+    EXPECT_CALL(sut.mockPort, getRequest()).WillOnce(Return(getRequestResult));
 
-TEST_F(UntypedServer_test, ReleaseRequestWithNullpointerDoesNotCallsUnderlyingPort)
-{
-    ::testing::Test::RecordProperty("TEST_ID", "8136b357-33a9-4f6d-a2fc-88901664917c");
+    auto takeResult = sut.take();
+    ASSERT_FALSE(takeResult.has_error());
 
-    EXPECT_CALL(sut.mockPort, releaseRequest(_)).Times(0);
-
-    sut.releaseRequest(nullptr);
+    EXPECT_CALL(sut.mockPort, releaseRequest(usedChunk)).Times(1);
+    // Release called implicitly by destructor of takeResult.
 }
 
 TEST_F(UntypedServer_test, LoanCallsUnderlyingPortWithSuccessResult)
 {
     ::testing::Test::RecordProperty("TEST_ID", "f39d58f3-b25e-4515-852d-c3afa5519e5a");
 
+    auto takeUsedChunk = UsedChunk{requestMock.chunkHeader(), 0U};
+    const iox::expected<UsedChunk, ServerRequestResult> getRequestResult =
+        iox::ok<UsedChunk>(takeUsedChunk);
+
+    EXPECT_CALL(sut.mockPort, getRequest()).WillOnce(Return(getRequestResult));
+
+    auto takeResult = sut.take();
+    ASSERT_FALSE(takeResult.has_error());
+
     constexpr uint64_t PAYLOAD_SIZE{8U};
     constexpr uint32_t PAYLOAD_ALIGNMENT{32U};
-    const iox::expected<ResponseHeader*, AllocationError> allocateResponseResult =
-        iox::ok<ResponseHeader*>(responseMock.userHeader());
+    auto usedChunk = UsedChunk{responseMock.chunkHeader(), 0U};
+    const iox::expected<UsedChunk, AllocationError> allocateResponseResult =
+        iox::ok<UsedChunk>(usedChunk);
 
     EXPECT_CALL(sut.mockPort, allocateResponse(requestMock.userHeader(), PAYLOAD_SIZE, PAYLOAD_ALIGNMENT))
         .WillOnce(Return(allocateResponseResult));
 
-    auto loanResult = sut.loan(requestMock.userHeader(), PAYLOAD_SIZE, PAYLOAD_ALIGNMENT);
+    auto loanResult = sut.loan(takeResult.value(), PAYLOAD_SIZE, PAYLOAD_ALIGNMENT);
     ASSERT_FALSE(loanResult.has_error());
-    EXPECT_THAT(loanResult.value(), Eq(responseMock.sample()));
+    EXPECT_THAT(loanResult->get(), Eq(responseMock.sample()));
 }
 
 TEST_F(UntypedServer_test, LoanCallsUnderlyingPortWithErrorResult)
 {
     ::testing::Test::RecordProperty("TEST_ID", "d813b550-64b2-490f-a9f4-bafc9ddc7696");
 
+    auto takeUsedChunk = UsedChunk{requestMock.chunkHeader(), 0U};
+    const iox::expected<UsedChunk, ServerRequestResult> getRequestResult =
+        iox::ok<UsedChunk>(takeUsedChunk);
+
+    EXPECT_CALL(sut.mockPort, getRequest()).WillOnce(Return(getRequestResult));
+
+    auto takeResult = sut.take();
+    ASSERT_FALSE(takeResult.has_error());
+
     constexpr uint64_t PAYLOAD_SIZE{8U};
     constexpr uint32_t PAYLOAD_ALIGNMENT{32U};
     constexpr AllocationError ALLOCATION_ERROR{AllocationError::RUNNING_OUT_OF_CHUNKS};
-    const iox::expected<ResponseHeader*, AllocationError> allocateResponseResult = iox::err(ALLOCATION_ERROR);
+    const iox::expected<UsedChunk, AllocationError> allocateResponseResult = iox::err(ALLOCATION_ERROR);
 
     EXPECT_CALL(sut.mockPort, allocateResponse(requestMock.userHeader(), PAYLOAD_SIZE, PAYLOAD_ALIGNMENT))
         .WillOnce(Return(allocateResponseResult));
 
-    auto loanResult = sut.loan(requestMock.userHeader(), PAYLOAD_SIZE, PAYLOAD_ALIGNMENT);
+    auto loanResult = sut.loan(takeResult.value(), PAYLOAD_SIZE, PAYLOAD_ALIGNMENT);
     ASSERT_TRUE(loanResult.has_error());
     EXPECT_THAT(loanResult.error(), Eq(ALLOCATION_ERROR));
 }
@@ -142,40 +167,62 @@ TEST_F(UntypedServer_test, SendWithValidPayloadPointerCallsUnderlyingPort)
 {
     ::testing::Test::RecordProperty("TEST_ID", "707cfdd8-05ae-490c-8cbb-9a4253135937");
 
-    EXPECT_CALL(sut.mockPort, sendResponse(responseMock.userHeader())).WillOnce(Return(iox::ok()));
+    auto takeUsedChunk = UsedChunk{requestMock.chunkHeader(), 0U};
+    const iox::expected<UsedChunk, ServerRequestResult> getRequestResult =
+        iox::ok<UsedChunk>(takeUsedChunk);
 
-    sut.send(responseMock.sample())
+    EXPECT_CALL(sut.mockPort, getRequest()).WillOnce(Return(getRequestResult));
+
+    auto takeResult = sut.take();
+    ASSERT_FALSE(takeResult.has_error());
+
+    constexpr uint64_t PAYLOAD_SIZE{8U};
+    constexpr uint32_t PAYLOAD_ALIGNMENT{32U};
+    auto usedChunk = UsedChunk{responseMock.chunkHeader(), 0U};
+    const iox::expected<UsedChunk, AllocationError> allocateResponseResult =
+        iox::ok<UsedChunk>(usedChunk);
+
+    EXPECT_CALL(sut.mockPort, allocateResponse(requestMock.userHeader(), PAYLOAD_SIZE, PAYLOAD_ALIGNMENT))
+        .WillOnce(Return(allocateResponseResult));
+
+    auto loanResult = sut.loan(takeResult.value(), PAYLOAD_SIZE, PAYLOAD_ALIGNMENT);
+    ASSERT_FALSE(loanResult.has_error());
+
+    EXPECT_CALL(sut.mockPort, sendResponse(usedChunk)).WillOnce(Return(iox::ok()));
+    EXPECT_CALL(sut.mockPort, releaseResponse(_)).Times(0);
+
+    loanResult->send()
         .and_then([&]() { GTEST_SUCCEED() << "Response successfully sent"; })
         .or_else([&](auto error) { GTEST_FAIL() << "Expected response to be sent but got error: " << error; });
-}
-
-TEST_F(UntypedServer_test, SendWithNullpointerDoesNotCallsUnderlyingPort)
-{
-    ::testing::Test::RecordProperty("TEST_ID", "d7552fc4-1e7c-40c2-b0b4-a24593dc0607");
-
-    EXPECT_CALL(sut.mockPort, sendResponse(_)).Times(0);
-
-    sut.send(nullptr)
-        .and_then([&]() { GTEST_FAIL() << "Expected response not successfully sent"; })
-        .or_else([&](auto error) { EXPECT_THAT(error, Eq(ServerSendError::INVALID_RESPONSE)); });
 }
 
 TEST_F(UntypedServer_test, ReleaseResponseWithValidPayloadPointerCallsUnderlyingPort)
 {
     ::testing::Test::RecordProperty("TEST_ID", "db4be6c4-fe6f-439c-b1c7-875909dd9573");
 
-    EXPECT_CALL(sut.mockPort, releaseResponse(responseMock.userHeader())).Times(1);
+    auto takeUsedChunk = UsedChunk{requestMock.chunkHeader(), 0U};
+    const iox::expected<UsedChunk, ServerRequestResult> getRequestResult =
+        iox::ok<UsedChunk>(takeUsedChunk);
 
-    sut.releaseResponse(responseMock.sample());
-}
+    EXPECT_CALL(sut.mockPort, getRequest()).WillOnce(Return(getRequestResult));
 
-TEST_F(UntypedServer_test, ReleaseResponseWithNullpointerDoesNotCallsUnderlyingPort)
-{
-    ::testing::Test::RecordProperty("TEST_ID", "63cdadf3-5745-4196-a5dc-5b8925c14289");
+    auto takeResult = sut.take();
+    ASSERT_FALSE(takeResult.has_error());
 
-    EXPECT_CALL(sut.mockPort, releaseResponse(_)).Times(0);
+    constexpr uint64_t PAYLOAD_SIZE{8U};
+    constexpr uint32_t PAYLOAD_ALIGNMENT{32U};
+    auto usedChunk = UsedChunk{responseMock.chunkHeader(), 0U};
+    const iox::expected<UsedChunk, AllocationError> allocateResponseResult =
+        iox::ok<UsedChunk>(usedChunk);
 
-    sut.releaseResponse(nullptr);
+    EXPECT_CALL(sut.mockPort, allocateResponse(requestMock.userHeader(), PAYLOAD_SIZE, PAYLOAD_ALIGNMENT))
+        .WillOnce(Return(allocateResponseResult));
+
+    auto loanResult = sut.loan(takeResult.value(), PAYLOAD_SIZE, PAYLOAD_ALIGNMENT);
+    ASSERT_FALSE(loanResult.has_error());
+
+    EXPECT_CALL(sut.mockPort, releaseResponse(usedChunk)).Times(1);
+    // Response released implicitly by destructor of loanResult.
 }
 
 } // namespace

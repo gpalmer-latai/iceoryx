@@ -39,7 +39,7 @@ UntypedServerImpl<BaseServerT>::~UntypedServerImpl() noexcept
 template <typename BaseServerT>
 expected<Request<const void>, ServerRequestResult> UntypedServerImpl<BaseServerT>::take() noexcept
 {
-    auto maybeUsedChunk = port().getResponse();
+    auto maybeUsedChunk = port().getRequest();
     if (maybeUsedChunk.has_error())
     {
         return err(maybeUsedChunk.error());
@@ -56,7 +56,7 @@ expected<Response<void>, AllocationError> UntypedServerImpl<BaseServerT>::loan(c
                                                                       const uint32_t payloadAlignment) noexcept
 {
     const auto* requestHeader = &request.getRequestHeader();
-    auto maybeUsedChunk = port().allocateResponse(requestHeader, sizeof(Res), alignof(Res));
+    auto maybeUsedChunk = port().allocateResponse(requestHeader, payloadSize, payloadAlignment);
     if (maybeUsedChunk.has_error())
     {
         return err(maybeUsedChunk.error());

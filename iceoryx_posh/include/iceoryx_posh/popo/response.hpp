@@ -71,6 +71,8 @@ class Response
     friend class ClientImpl;
     template <typename, typename, typename>
     friend class ServerImpl;
+    template <typename>
+    friend class UntypedServerImpl;
 
     using BaseType::release;
 

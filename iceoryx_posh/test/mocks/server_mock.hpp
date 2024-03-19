@@ -19,9 +19,15 @@
 
 #include "iceoryx_posh/internal/popo/base_server.hpp"
 #include "iox/expected.hpp"
-#include "mocks/base_port_mock.hpp"
 
-#include "test.hpp"
+#if __has_include("mocks/base_port_mock.hpp")
+#include "mocks/base_port_mock.hpp"
+#else
+#include "iceoryx_posh/test/mocks/base_port_mock.hpp"
+#endif
+
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 using namespace ::testing;
 using ::testing::_;
@@ -46,22 +52,22 @@ class MockServerPortUser : public MockBasePort
         return *this;
     }
 
-    MOCK_METHOD((iox::expected<const iox::popo::RequestHeader*, iox::popo::ServerRequestResult>),
+    MOCK_METHOD((iox::expected<iox::popo::UsedChunk, iox::popo::ServerRequestResult>),
                 getRequest,
                 (),
                 (noexcept));
-    MOCK_METHOD(void, releaseRequest, (const iox::popo::RequestHeader* const), (noexcept));
+    MOCK_METHOD(void, releaseRequest, (const iox::popo::UsedChunk), (noexcept));
     MOCK_METHOD(void, releaseQueuedRequests, (), (noexcept));
     MOCK_METHOD(bool, hasNewRequests, (), (const, noexcept));
     MOCK_METHOD(bool, hasLostRequestsSinceLastCall, (), (noexcept));
-    MOCK_METHOD((iox::expected<iox::popo::ResponseHeader*, iox::popo::AllocationError>),
+    MOCK_METHOD((iox::expected<iox::popo::UsedChunk, iox::popo::AllocationError>),
                 allocateResponse,
                 (const iox::popo::RequestHeader* const, const uint64_t, const uint32_t),
                 (noexcept));
-    MOCK_METHOD(void, releaseResponse, (const iox::popo::ResponseHeader* const), (noexcept));
+    MOCK_METHOD(void, releaseResponse, (const iox::popo::UsedChunk), (noexcept));
     MOCK_METHOD((iox::expected<void, iox::popo::ServerSendError>),
                 sendResponse,
-                (iox::popo::ResponseHeader* const),
+                (const iox::popo::UsedChunk),
                 (noexcept));
     MOCK_METHOD(void, offer, (), (noexcept));
     MOCK_METHOD(void, stopOffer, (), (noexcept));

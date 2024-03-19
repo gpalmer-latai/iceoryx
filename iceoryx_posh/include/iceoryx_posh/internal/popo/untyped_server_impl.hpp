@@ -20,6 +20,9 @@
 #include "iceoryx_posh/capro/service_description.hpp"
 #include "iceoryx_posh/internal/popo/base_server.hpp"
 #include "iceoryx_posh/popo/server_options.hpp"
+#include "iceoryx_posh/internal/popo/rpc_interface.hpp"
+#include "iceoryx_posh/popo/request.hpp"
+#include "iceoryx_posh/popo/response.hpp"
 
 namespace iox
 {
@@ -28,7 +31,7 @@ namespace popo
 /// @brief The UntypedServerImpl class implements the untyped server API
 /// @note Not intended for public usage! Use the 'UntypedServer' instead!
 template <typename BaseServerT = BaseServer<>>
-class UntypedServerImpl : public BaseServerT
+class UntypedServerImpl : public BaseServerT, private RpcInterface<Response<void>, ServerSendError>
 {
   public:
     explicit UntypedServerImpl(const capro::ServiceDescription& service,
@@ -60,7 +63,7 @@ class UntypedServerImpl : public BaseServerT
     /// @brief Sends the given Response and then releases its loan.
     /// @param response to send.
     /// @return Error if sending was not successful
-    expected<void, ServerSendError> send(Response<void>&& response) noexcept;
+    expected<void, ServerSendError> send(Response<void>&& response) noexcept override;
 
   protected:
     using BaseServerT::port;

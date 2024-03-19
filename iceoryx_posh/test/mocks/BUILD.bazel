@@ -44,3 +44,16 @@ cc_library(
     ],
     visibility = ["//iceoryx_posh/test:__subpackages__"],
 )
+
+cc_library(
+    name = "server_mock",
+    hdrs = ["server_mock.hpp"],
+    testonly = True,
+    deps = [
+        ":base_port_mock",
+        "//iceoryx_posh",
+        "//iceoryx_hoofs",
+        "@googletest//:gtest",
+    ],
+    visibility = ["//iceoryx_posh/test:__subpackages__"],
+)
