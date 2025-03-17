@@ -1,5 +1,6 @@
 // Copyright (c) 2019 by Robert Bosch GmbH. All rights reserved.
 // Copyright (c) 2021 - 2022 by Apex.AI Inc. All rights reserved.
+// Copyright (c) 2025 by Latitude AI. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -60,9 +61,15 @@ void SharedChunk::decrementReferenceCounter() noexcept
 
 void SharedChunk::freeChunk() noexcept
 {
-    m_chunkManagement->m_mempool->freeChunk(static_cast<void*>(m_chunkManagement->m_chunkHeader.get()));
+    const auto* chunkHeader = static_cast<void*>(m_chunkManagement->m_chunkHeader.get());
+    const auto mempool = m_chunkManagement->m_mempool;
+
+    // Here the chunk management must be freed before the chunk itself to maintain
+    // the invariant that there are always at least as many chunk management chunks available as payload chunks
     m_chunkManagement->m_chunkManagementPool->freeChunk(m_chunkManagement);
     m_chunkManagement = nullptr;
+
+    mempool->freeChunk(chunkHeader);
 }
 
 SharedChunk& SharedChunk::operator=(const SharedChunk& rhs) noexcept
